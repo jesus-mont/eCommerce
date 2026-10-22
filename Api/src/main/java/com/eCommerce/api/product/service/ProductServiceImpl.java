@@ -1,12 +1,12 @@
-package com.ecommerce.api.product.service;
+package com.eCommerce.api.product.service;
 
-import com.ecommerce.api.common.exception.DuplicateResourceException;
-import com.ecommerce.api.common.exception.ResourceNotFoundException;
-import com.ecommerce.api.product.domain.Product;
-import com.ecommerce.api.product.dto.CreateProductRequest;
-import com.ecommerce.api.product.dto.ProductResponse;
-import com.ecommerce.api.product.dto.UpdateProductRequest;
-import com.ecommerce.api.product.repository.ProductRepository;
+import com.eCommerce.api.common.exception.DuplicateResourceException;
+import com.eCommerce.api.common.exception.ResourceNotFoundException;
+import com.eCommerce.api.product.domain.Product;
+import com.eCommerce.api.product.dto.CreateProductRequest;
+import com.eCommerce.api.product.dto.ProductResponse;
+import com.eCommerce.api.product.dto.UpdateProductRequest;
+import com.eCommerce.api.product.repository.ProductRepository;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

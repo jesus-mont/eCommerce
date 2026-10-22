@@ -1,4 +1,4 @@
-package com.ecommerce.api.common.exception;
+package com.eCommerce.api.common.exception;
 
 public class DuplicateResourceException extends RuntimeException {
     public DuplicateResourceException(String message) {

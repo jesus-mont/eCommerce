@@ -1,8 +1,8 @@
-package com.ecommerce.api.product.service;
+package com.eCommerce.api.product.service;
 
-import com.ecommerce.api.product.dto.CreateProductRequest;
-import com.ecommerce.api.product.dto.ProductResponse;
-import com.ecommerce.api.product.dto.UpdateProductRequest;
+import com.eCommerce.api.product.dto.CreateProductRequest;
+import com.eCommerce.api.product.dto.ProductResponse;
+import com.eCommerce.api.product.dto.UpdateProductRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 

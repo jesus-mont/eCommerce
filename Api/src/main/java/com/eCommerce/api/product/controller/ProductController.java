@@ -1,9 +1,9 @@
-package com.ecommerce.api.product.controller;
+package com.eCommerce.api.product.controller;
 
-import com.ecommerce.api.product.dto.CreateProductRequest;
-import com.ecommerce.api.product.dto.ProductResponse;
-import com.ecommerce.api.product.dto.UpdateProductRequest;
-import com.ecommerce.api.product.service.ProductService;
+import com.eCommerce.api.product.dto.CreateProductRequest;
+import com.eCommerce.api.product.dto.ProductResponse;
+import com.eCommerce.api.product.dto.UpdateProductRequest;
+import com.eCommerce.api.product.service.ProductService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

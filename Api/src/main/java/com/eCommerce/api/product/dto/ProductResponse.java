@@ -1,6 +1,6 @@
-package com.ecommerce.api.product.dto;
+package com.eCommerce.api.product.dto;
 
-import com.ecommerce.api.product.domain.Product;
+import com.eCommerce.api.product.domain.Product;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;

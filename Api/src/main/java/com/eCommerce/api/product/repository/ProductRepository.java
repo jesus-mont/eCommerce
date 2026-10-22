@@ -1,6 +1,6 @@
-package com.ecommerce.api.product.repository;
+package com.eCommerce.api.product.repository;
 
-import com.ecommerce.api.product.domain.Product;
+import com.eCommerce.api.product.domain.Product;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;

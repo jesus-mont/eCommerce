@@ -1,4 +1,4 @@
-package com.ecommerce.api.product.domain;
+package com.eCommerce.api.product.domain;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.DecimalMin;
