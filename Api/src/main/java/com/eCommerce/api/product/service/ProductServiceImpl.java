@@ -59,6 +59,12 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    public Page<ProductResponse> searchProducts(String keyword, Pageable pageable) {
+        return productRepository.searchProducts(keyword.trim(), pageable)
+                .map(ProductResponse::fromEntity);
+    }
+
+    @Override
     @Transactional
     public ProductResponse updateProduct(Long id, UpdateProductRequest request) {
         Product product = productRepository.findByIdAndIsActiveTrue(id)

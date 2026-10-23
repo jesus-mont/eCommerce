@@ -242,4 +242,30 @@ class ProductServiceImplTest {
         );
         verify(productRepository, times(1)).findByIdAndIsActiveTrue(productId);
     }
+
+    @Test
+    @DisplayName("Should return a paged list of products matching the search keyword")
+    void searchProducts_Success() {
+        Pageable pageable = PageRequest.of(0, 10);
+        String keyword = "laptop";
+        Product product = Product.builder()
+                .id(1L)
+                .sku("SKU-001")
+                .name("Gaming Laptop")
+                .category("ELECTRONICS")
+                .price(BigDecimal.valueOf(1200))
+                .stock(5)
+                .isActive(true)
+                .build();
+
+        Page<Product> productPage = new PageImpl<>(List.of(product), pageable, 1);
+        when(productRepository.searchProducts(eq(keyword), eq(pageable))).thenReturn(productPage);
+
+        Page<ProductResponse> responsePage = productService.searchProducts(keyword, pageable);
+
+        assertNotNull(responsePage);
+        assertEquals(1, responsePage.getTotalElements());
+        assertEquals("Gaming Laptop", responsePage.getContent().get(0).name());
+        verify(productRepository, times(1)).searchProducts(eq(keyword), eq(pageable));
+    }
 }

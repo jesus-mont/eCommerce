@@ -179,4 +179,24 @@ class ProductControllerTest {
         mockMvc.perform(delete("/api/products/{id}", productId))
                 .andExpect(status().isNoContent());
     }
+
+    @Test
+    @DisplayName("GET /api/products/search - Should return 200 OK with matching products")
+    void searchProducts_Success() throws Exception {
+        String keyword = "laptop";
+        ProductResponse response = new ProductResponse(
+                1L, "SKU-001", "Gaming Laptop", "Desc", "ELECTRONICS",
+                new BigDecimal("1200.00"), 5, new BigDecimal("2.5"), true, null, null
+        );
+
+        PageImpl<ProductResponse> page = new PageImpl<>(List.of(response), PageRequest.of(0, 20), 1);
+        given(productService.searchProducts(eq(keyword), any())).willReturn(page);
+
+        mockMvc.perform(get("/api/products/search")
+                        .param("q", keyword)
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].name").value("Gaming Laptop"))
+                .andExpect(jsonPath("$.totalElements").value(1));
+    }
 }
