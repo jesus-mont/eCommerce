@@ -1,5 +1,6 @@
 package com.eCommerce.api.product.dto;
 
+import com.eCommerce.api.product.domain.ProductCategory;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
@@ -31,7 +32,7 @@ class CreateProductRequestTest {
                 "SKU-001",
                 "Laptop Gamer",
                 "High performance laptop",
-                "ELECTRONICS",
+                ProductCategory.ELECTRONICS,
                 new BigDecimal("1500.00"),
                 10,
                 new BigDecimal("2.500")
@@ -52,7 +53,7 @@ class CreateProductRequestTest {
                 "",
                 "   ",
                 null,
-                "",
+        null,
                 null,
                 null,
                 null
@@ -67,14 +68,14 @@ class CreateProductRequestTest {
     }
 
     @Test
-    @DisplayName("Defail when values of stock or price are incorrect")
+    @DisplayName("fail when values of stock or price are incorrect")
     void validation_InvalidNumberValues_ShouldFail() {
         // Arrange
         CreateProductRequest request = new CreateProductRequest(
                 "SKU-001",
                 "Laptop",
                 "Desc",
-                "ELECTRONICS",
+                null,
                 new BigDecimal("0.00"),
                 -5,
                 new BigDecimal("0.000")
@@ -85,6 +86,6 @@ class CreateProductRequestTest {
 
         // Assert
         assertFalse(violations.isEmpty());
-        assertEquals(3, violations.size());
+        assertEquals(4, violations.size());
     }
 }

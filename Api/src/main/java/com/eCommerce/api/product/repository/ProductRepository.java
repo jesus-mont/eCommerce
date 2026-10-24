@@ -23,7 +23,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     @Query("SELECT p FROM Product p WHERE p.isActive = true AND " +
             "(LOWER(p.name) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
             "LOWER(p.description) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
-            "LOWER(p.category) LIKE LOWER(CONCAT('%', :keyword, '%')))")
+            "LOWER(str(p.category)) LIKE LOWER(CONCAT('%', :keyword, '%')))")
     Page<Product> searchProducts(@Param("keyword") String keyword, Pageable pageable);
 
     @Modifying

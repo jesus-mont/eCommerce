@@ -34,7 +34,7 @@ public class ProductServiceImpl implements ProductService {
                 .sku(request.sku().toUpperCase().trim())
                 .name(request.name().trim())
                 .description(request.description())
-                .category(request.category().toUpperCase().trim())
+                .category(request.category())
                 .price(request.price())
                 .stock(request.stock())
                 .weightKg(request.weightKg())
@@ -72,7 +72,7 @@ public class ProductServiceImpl implements ProductService {
 
         product.setName(request.name().trim());
         product.setDescription(request.description());
-        product.setCategory(request.category().toUpperCase().trim());
+        product.setCategory(request.category());
         product.setPrice(request.price());
         product.setStock(request.stock());
         product.setWeightKg(request.weightKg());

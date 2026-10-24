@@ -1,6 +1,7 @@
 package com.eCommerce.api.product.dto;
 
 import com.eCommerce.api.product.domain.Product;
+import com.eCommerce.api.product.domain.ProductCategory;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -20,7 +21,7 @@ class ProductResponseTest {
                 .sku("SKU-001")
                 .name("Laptop")
                 .description("Gaming Laptop")
-                .category("ELECTRONICS")
+                .category(ProductCategory.ELECTRONICS)
                 .price(new BigDecimal("1200.00"))
                 .stock(10)
                 .weightKg(new BigDecimal("2.5"))

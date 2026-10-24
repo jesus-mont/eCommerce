@@ -40,9 +40,9 @@ public class Product {
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    @NotBlank
+    @NotNull
     @Column(nullable = false)
-    private String category;
+    private ProductCategory category;
 
     @NotNull
     @DecimalMin(value = "0.01", message = "Price must be greater than zero")

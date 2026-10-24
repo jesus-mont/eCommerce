@@ -1,5 +1,6 @@
 package com.eCommerce.api.product.dto;
 
+import com.eCommerce.api.product.domain.ProductCategory;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
@@ -29,7 +30,7 @@ class UpdateProductRequestTest {
         UpdateProductRequest request = new UpdateProductRequest(
                 "Updated Laptop",
                 "Updated description",
-                "ELECTRONICS",
+                ProductCategory.ELECTRONICS,
                 new BigDecimal("1300.00"),
                 15,
                 new BigDecimal("2.200")
@@ -46,7 +47,7 @@ class UpdateProductRequestTest {
         UpdateProductRequest request = new UpdateProductRequest(
                 "",
                 null,
-                "   ",
+                null,
                 null,
                 null,
                 null
@@ -64,7 +65,7 @@ class UpdateProductRequestTest {
         UpdateProductRequest request = new UpdateProductRequest(
                 "Laptop",
                 "Desc",
-                "ELECTRONICS",
+                ProductCategory.ELECTRONICS,
                 new BigDecimal("0.00"),
                 -1,
                 new BigDecimal("0.000")

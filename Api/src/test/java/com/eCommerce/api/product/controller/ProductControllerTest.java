@@ -2,6 +2,7 @@ package com.eCommerce.api.product.controller;
 
 import com.eCommerce.api.common.exception.DuplicateResourceException;
 import com.eCommerce.api.common.exception.ResourceNotFoundException;
+import com.eCommerce.api.product.domain.ProductCategory;
 import com.eCommerce.api.product.dto.CreateProductRequest;
 import com.eCommerce.api.product.dto.ProductResponse;
 import com.eCommerce.api.product.dto.UpdateProductRequest;
@@ -45,12 +46,12 @@ class ProductControllerTest {
     void createProduct_Success() throws Exception {
         // Arrange
         CreateProductRequest request = new CreateProductRequest(
-                "SKU-001", "Laptop", "Gaming Laptop", "ELECTRONICS",
+                "SKU-001", "Laptop", "Gaming Laptop", ProductCategory.ELECTRONICS,
                 new BigDecimal("1200.00"), 10, BigDecimal.valueOf(2.5)
         );
 
         ProductResponse response = new ProductResponse(
-                1L, "SKU-001", "Laptop", "Gaming Laptop", "ELECTRONICS",
+                1L, "SKU-001", "Laptop", "Gaming Laptop", ProductCategory.ELECTRONICS,
                 new BigDecimal("1200.00"), 10, new BigDecimal("2.5"), true, OffsetDateTime.now(), OffsetDateTime.now()
         );
 
@@ -71,7 +72,7 @@ class ProductControllerTest {
     void createProduct_Conflict() throws Exception {
         // Arrange
         CreateProductRequest request = new CreateProductRequest(
-                "SKU-001", "Laptop", "Gaming Laptop", "ELECTRONICS",
+                "SKU-001", "Laptop", "Gaming Laptop", ProductCategory.ELECTRONICS,
                 new BigDecimal("1200.00"), 10,  BigDecimal.valueOf(2.5)
         );
 
@@ -93,7 +94,7 @@ class ProductControllerTest {
         // Arrange
         Long productId = 1L;
         ProductResponse response = new ProductResponse(
-                productId, "SKU-001", "Laptop", "Gaming Laptop", "ELECTRONICS",
+                productId, "SKU-001", "Laptop", "Gaming Laptop", ProductCategory.ELECTRONICS,
                 new BigDecimal("1200.00"), 10, new BigDecimal("2.5"), true, OffsetDateTime.now(), OffsetDateTime.now()
         );
 
@@ -128,7 +129,7 @@ class ProductControllerTest {
     void getAllProducts_Success() throws Exception {
         // Arrange
         ProductResponse response = new ProductResponse(
-                1L, "SKU-001", "Laptop", "Gaming Laptop", "ELECTRONICS",
+                1L, "SKU-001", "Laptop", "Gaming Laptop", ProductCategory.ELECTRONICS,
                 new BigDecimal("1200.00"), 10, new BigDecimal("2.5"), true, OffsetDateTime.now(), OffsetDateTime.now()
         );
 
@@ -149,12 +150,12 @@ class ProductControllerTest {
         // Arrange
         Long productId = 1L;
         UpdateProductRequest request = new UpdateProductRequest(
-                "Updated Laptop", "New Description", "ELECTRONICS",
+                "Updated Laptop", "New Description", ProductCategory.ELECTRONICS,
                 new BigDecimal("1300.00"), 8, new BigDecimal(2.3)
         );
 
         ProductResponse response = new ProductResponse(
-                productId, "SKU-001", "Updated Laptop", "New Description", "ELECTRONICS",
+                productId, "SKU-001", "Updated Laptop", "New Description", ProductCategory.ELECTRONICS,
                 new BigDecimal("1300.00"), 8, new BigDecimal(2.3), true, OffsetDateTime.now(), OffsetDateTime.now()
         );
 
@@ -185,7 +186,7 @@ class ProductControllerTest {
     void searchProducts_Success() throws Exception {
         String keyword = "laptop";
         ProductResponse response = new ProductResponse(
-                1L, "SKU-001", "Gaming Laptop", "Desc", "ELECTRONICS",
+                1L, "SKU-001", "Gaming Laptop", "Desc", ProductCategory.ELECTRONICS,
                 new BigDecimal("1200.00"), 5, new BigDecimal("2.5"), true, null, null
         );
 

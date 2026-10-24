@@ -3,6 +3,7 @@ package com.eCommerce.api.product.service;
 import com.eCommerce.api.common.exception.DuplicateResourceException;
 import com.eCommerce.api.common.exception.ResourceNotFoundException;
 import com.eCommerce.api.product.domain.Product;
+import com.eCommerce.api.product.domain.ProductCategory;
 import com.eCommerce.api.product.dto.CreateProductRequest;
 import com.eCommerce.api.product.dto.ProductResponse;
 import com.eCommerce.api.product.dto.UpdateProductRequest;
@@ -40,7 +41,7 @@ class ProductServiceImplTest {
     void createProduct_Success() {
         // Arrange
         CreateProductRequest request = new CreateProductRequest(
-                "sku-001", "  Laptop  ", "Gaming Laptop", "electronics",
+                "sku-001", "  Laptop  ", "Gaming Laptop", ProductCategory.ELECTRONICS,
                 new BigDecimal("1200.00"), 10, BigDecimal.valueOf(2.5)
         );
 
@@ -67,7 +68,7 @@ class ProductServiceImplTest {
     void createProduct_ThrowsDuplicateException() {
         // Arrange
         CreateProductRequest request = new CreateProductRequest(
-                "sku-001", "Laptop", "Gaming Laptop", "electronics",
+                "sku-001", "Laptop", "Gaming Laptop", ProductCategory.ELECTRONICS,
                 new BigDecimal("1200.00"), 10, BigDecimal.valueOf(2.5)
         );
 
@@ -92,7 +93,7 @@ class ProductServiceImplTest {
                 .id(productId)
                 .sku("SKU-001")
                 .name("Laptop")
-                .category("ELECTRONICS")
+                .category(ProductCategory.ELECTRONICS)
                 .price(BigDecimal.valueOf(1000))
                 .stock(5)
                 .isActive(true)
@@ -136,7 +137,7 @@ class ProductServiceImplTest {
                 .id(1L)
                 .sku("SKU-001")
                 .name("Laptop")
-                .category("ELECTRONICS")
+                .category(ProductCategory.ELECTRONICS)
                 .price(BigDecimal.valueOf(1000))
                 .stock(5)
                 .isActive(true)
@@ -164,14 +165,14 @@ class ProductServiceImplTest {
                 .id(productId)
                 .sku("SKU-001")
                 .name("Old Name")
-                .category("OLD_CAT")
+                .category(ProductCategory.PETS)
                 .price(BigDecimal.valueOf(500))
                 .stock(2)
                 .isActive(true)
                 .build();
 
         UpdateProductRequest request = new UpdateProductRequest(
-                "  Updated Name  ", "New Description", "  new-cat  ",
+                "  Updated Name  ", "New Description", ProductCategory.PETS,
                 BigDecimal.valueOf(800), 15, BigDecimal.valueOf(1.2)
         );
 
@@ -183,7 +184,7 @@ class ProductServiceImplTest {
         // Assert
         assertNotNull(response);
         assertEquals("Updated Name", existingProduct.getName());
-        assertEquals("NEW-CAT", existingProduct.getCategory());
+        assertEquals(ProductCategory.PETS, existingProduct.getCategory());
         assertEquals(BigDecimal.valueOf(800), existingProduct.getPrice());
         verify(productRepository, times(1)).findByIdAndIsActiveTrue(productId);
     }
@@ -194,7 +195,7 @@ class ProductServiceImplTest {
         // Arrange
         Long productId = 99L;
         UpdateProductRequest request = new UpdateProductRequest(
-                "Name", "Desc", "Cat", BigDecimal.valueOf(100), 1, BigDecimal.valueOf(1.0)
+                "Name", "Desc", ProductCategory.PETS, BigDecimal.valueOf(100), 1, BigDecimal.valueOf(1.0)
         );
 
         when(productRepository.findByIdAndIsActiveTrue(productId)).thenReturn(Optional.empty());
@@ -252,7 +253,7 @@ class ProductServiceImplTest {
                 .id(1L)
                 .sku("SKU-001")
                 .name("Gaming Laptop")
-                .category("ELECTRONICS")
+                .category(ProductCategory.ELECTRONICS)
                 .price(BigDecimal.valueOf(1200))
                 .stock(5)
                 .isActive(true)

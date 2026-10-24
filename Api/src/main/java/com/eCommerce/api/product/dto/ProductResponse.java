@@ -1,6 +1,7 @@
 package com.eCommerce.api.product.dto;
 
 import com.eCommerce.api.product.domain.Product;
+import com.eCommerce.api.product.domain.ProductCategory;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -11,7 +12,7 @@ public record ProductResponse(
         String sku,
         String name,
         String description,
-        String category,
+        ProductCategory category,
         BigDecimal price,
         Integer stock,
         BigDecimal weightKg,
