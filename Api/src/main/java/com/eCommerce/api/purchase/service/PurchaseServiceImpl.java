@@ -2,7 +2,6 @@ package com.eCommerce.api.purchase.service;
 
 import com.eCommerce.api.common.exception.ResourceNotFoundException;
 import com.eCommerce.api.product.domain.Product;
-import com.eCommerce.api.product.dto.ProductResponse;
 import com.eCommerce.api.product.repository.ProductRepository;
 import com.eCommerce.api.purchase.domain.OrderItem;
 import com.eCommerce.api.purchase.domain.OrderStatus;
@@ -10,13 +9,13 @@ import com.eCommerce.api.purchase.domain.PurchaseOrder;
 import com.eCommerce.api.purchase.dto.CreatePurchaseRequest;
 import com.eCommerce.api.purchase.dto.PurchaseResponse;
 import com.eCommerce.api.purchase.event.PurchaseCreatedEvent;
-import com.eCommerce.api.purchase.messaging.PurchaseProducer;
+import com.eCommerce.api.purchase.event.OrderCommittedEvent;
 import com.eCommerce.api.purchase.repository.PurchaseOrderRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -27,16 +26,16 @@ public class PurchaseServiceImpl implements PurchaseService {
 
     private final PurchaseOrderRepository purchaseOrderRepository;
     private final ProductRepository productRepository;
-    private final PurchaseProducer purchaseProducer;
+    private final ApplicationEventPublisher eventPublisher;
 
     public PurchaseServiceImpl(
             PurchaseOrderRepository purchaseOrderRepository,
             ProductRepository productRepository,
-            PurchaseProducer purchaseProducer
-    ) {
+            ApplicationEventPublisher eventPublisher
+            ) {
         this.purchaseOrderRepository = purchaseOrderRepository;
         this.productRepository = productRepository;
-        this.purchaseProducer = purchaseProducer;
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
@@ -101,7 +100,7 @@ public class PurchaseServiceImpl implements PurchaseService {
                 savedOrder.getCreatedAt()
         );
 
-        purchaseProducer.sendPurchaseEvent(event);
+        eventPublisher.publishEvent(new OrderCommittedEvent(event));
 
         return PurchaseResponse.fromEntity(savedOrder);
     }

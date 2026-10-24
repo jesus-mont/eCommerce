@@ -9,6 +9,8 @@ import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Optional;
+
 @Component
 public class PurchaseEventListener {
 
@@ -19,12 +21,19 @@ public class PurchaseEventListener {
     }
 
     @RabbitListener(queues = RabbitMQConfig.PURCHASE_QUEUE)
-    @Transactional
     public void handlePurchaseCreated(PurchaseCreatedEvent event) {
-        PurchaseOrder order = purchaseOrderRepository.findById(event.orderId())
-                .orElseThrow(() -> new RuntimeException("Order not found: " + event.orderId()));
+        Optional<PurchaseOrder> optionalOrder = purchaseOrderRepository.findById(event.orderId());
 
-        // Lógica de procesamiento de cobro exitoso y actualización de estado
+        if (optionalOrder.isEmpty()) {
+            System.err.println("Warning: not order find yer or  invalid ID: " + event.orderId());
+            return;
+        }
+
+        PurchaseOrder order = optionalOrder.get();
+        if (order.getStatus() == OrderStatus.COMPLETED) {
+            return;
+        }
+
         order.setStatus(OrderStatus.COMPLETED);
         purchaseOrderRepository.save(order);
     }

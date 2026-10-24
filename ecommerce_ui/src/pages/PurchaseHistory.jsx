@@ -1,25 +1,53 @@
 import React, { useEffect, useState } from 'react';
 import api from '../services/api';
+import Pagination from '../components/Pagination';
+
 
 export default function PurchaseHistory() {
   const [purchases, setPurchases] = useState([]);
   const [selectedPurchase, setSelectedPurchase] = useState(null);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     fetchPurchases();
   }, []);
 
-  const fetchPurchases = async () => {
+  const fetchPurchases = async (page = 0) => {
+    setLoading(true);
     try {
-      const response = await api.get('/purchases');
-      const data = response.data;
-      const purchaseList = Array.isArray(data) ? data : (data.content || []);
-      setPurchases(purchaseList);
+        const response = await api.get(`/purchases?page=${page}&size=20`);
+        const data = response.data;
+
+        if (data.content) {
+            setPurchases(data.content);
+            setTotalPages(data.totalPages);   
+            setCurrentPage(data.number);     
+        } else if (Array.isArray(data)) {
+            setPurchases(data);
+            setTotalPages(1);
+            setCurrentPage(0);
+        } else {
+            setPurchases([]);
+        }
     } catch (error) {
-      console.error('Error fetching purchases:', error);
-      setPurchases([]);
+        console.error('Error fetching products:', error);
+        setPurchases([]);
+    } finally {
+        setLoading(false);
     }
   };
+  
+  useEffect(() => {
+    fetchPurchases(currentPage);
+  }, [currentPage]);
+
+  const handlePageChange = (newPage) => {
+        if (newPage >= 0 && newPage < totalPages) {
+            setCurrentPage(newPage);
+        }
+    };
 
   const fetchPurchaseDetail = async (id) => {
     try {
@@ -79,6 +107,7 @@ export default function PurchaseHistory() {
           <div>
             <p><strong>ID:</strong> {selectedPurchase.id}</p>
             <p><strong>Email:</strong> {selectedPurchase.customerEmail}</p>
+            <p><strong>Status:</strong> {selectedPurchase.status}</p>
             <p><strong>Total:</strong> ${selectedPurchase.totalAmount}</p>
             <p><strong>Date:</strong> {selectedPurchase.createdAt || 'N/A'}</p>
             

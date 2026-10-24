@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../services/api';
+import Pagination from '../components/Pagination';
+
 
 export default function ProductAdmin() {
   const CATEGORIES = [
@@ -37,20 +39,49 @@ export default function ProductAdmin() {
   const [isEditing, setIsEditing] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [message, setMessage] = useState(null);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     fetchProducts();
   }, []);
 
-  const fetchProducts = async () => {
+  const fetchProducts = async (page = 0) => {
+    setLoading(true);
     try {
-      const response = await api.get('/products');
-      const data = response.data;
-      setProducts(Array.isArray(data) ? data : (data.content || []));
+        const response = await api.get(`/products?page=${page}&size=20`);
+        const data = response.data;
+
+        // Validamos si viene en formato paginado de Spring (Page) o como lista plana
+        if (data.content) {
+            setProducts(data.content);
+            setTotalPages(data.totalPages);   
+            setCurrentPage(data.number);     
+        } else if (Array.isArray(data)) {
+            setProducts(data);
+            setTotalPages(1);
+            setCurrentPage(0);
+        } else {
+            setProducts([]);
+        }
     } catch (error) {
-      console.error('Error fetching products:', error);
+        console.error('Error fetching products:', error);
+        setProducts([]);
+    } finally {
+        setLoading(false);
     }
   };
+  
+  useEffect(() => {
+    fetchProducts(currentPage);
+  }, [currentPage]);
+
+  const handlePageChange = (newPage) => {
+        if (newPage >= 0 && newPage < totalPages) {
+            setCurrentPage(newPage);
+        }
+    };
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -242,6 +273,11 @@ export default function ProductAdmin() {
           )}
         </tbody>
       </table>
+      <Pagination 
+          currentPage={currentPage} 
+          totalPages={totalPages} 
+          onPageChange={handlePageChange} 
+        />
     </div>
   );
 }

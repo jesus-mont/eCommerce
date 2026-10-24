@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import api from '../services/api';
+import Pagination from '../components/Pagination';
 
 export default function ProductCatalog() {
   const [products, setProducts] = useState([]);
@@ -7,22 +8,49 @@ export default function ProductCatalog() {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [cart, setCart] = useState([]); 
   const [customerEmail, setCustomerEmail] = useState('');
+  const [currentPage, setCurrentPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     fetchProducts();
   }, []);
 
-  const fetchProducts = async () => {
+  const fetchProducts = async (page = 0) => {
+    setLoading(true);
     try {
-      const response = await api.get('/products');
-      const data = response.data;
-      const productList = Array.isArray(data) ? data : (data.content || []);
-      setProducts(productList);
+        const response = await api.get(`/products?page=${page}&size=20`);
+        const data = response.data;
+
+        // Validamos si viene en formato paginado de Spring (Page) o como lista plana
+        if (data.content) {
+            setProducts(data.content);
+            setTotalPages(data.totalPages);   
+            setCurrentPage(data.number);     
+        } else if (Array.isArray(data)) {
+            setProducts(data);
+            setTotalPages(1);
+            setCurrentPage(0);
+        } else {
+            setProducts([]);
+        }
     } catch (error) {
-      console.error('Error fetching products:', error);
-      setProducts([]);
+        console.error('Error fetching products:', error);
+        setProducts([]);
+    } finally {
+        setLoading(false);
     }
   };
+  
+  useEffect(() => {
+    fetchProducts(currentPage);
+  }, [currentPage]);
+
+  const handlePageChange = (newPage) => {
+        if (newPage >= 0 && newPage < totalPages) {
+            setCurrentPage(newPage);
+        }
+    };
 
   const addToCart = (product) => {
     setCart((prevCart) => {
@@ -76,6 +104,7 @@ export default function ProductCatalog() {
   };
 
   const totalPrice = cart.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2);
+
 
   const filteredProducts = Array.isArray(products) 
     ? products.filter(p => 
@@ -173,6 +202,11 @@ export default function ProductCatalog() {
             )}
           </tbody>
         </table>
+        <Pagination 
+          currentPage={currentPage} 
+          totalPages={totalPages} 
+          onPageChange={handlePageChange} 
+        />
       </div>
 
       <div style={{ flex: 1, background: '#f8f9fa', padding: '20px', borderRadius: '8px', border: '1px solid #dee2e6', height: 'fit-content' }}>
