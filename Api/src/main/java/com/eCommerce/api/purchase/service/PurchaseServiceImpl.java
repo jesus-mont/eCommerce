@@ -58,6 +58,12 @@ public class PurchaseServiceImpl implements PurchaseService {
             if (product.getStock() < itemReq.quantity()) {
                 throw new IllegalArgumentException("Insufficient stock for product: " + product.getName());
             }
+            product.setStock(product.getStock() - itemReq.quantity());
+            try {
+                productRepository.save(product);
+            } catch (org.springframework.orm.ObjectOptimisticLockingFailureException e) {
+                throw new IllegalStateException("product: '" + product.getName() + "'was updated by other transaction. Please try again.");
+            }
 
             BigDecimal itemTotal = product.getPrice().multiply(BigDecimal.valueOf(itemReq.quantity()));
             totalAmount = totalAmount.add(itemTotal);
@@ -80,7 +86,7 @@ public class PurchaseServiceImpl implements PurchaseService {
             ));
         }
 
-        if(eventItems.isEmpty()){
+        if (eventItems.isEmpty()){
             throw new IllegalArgumentException("Purchase must contain at least one item");
         }
 
@@ -99,7 +105,6 @@ public class PurchaseServiceImpl implements PurchaseService {
 
         return PurchaseResponse.fromEntity(savedOrder);
     }
-
     @Override
     public Page<PurchaseResponse> getAllPurchases(Pageable pageable) {
         return purchaseOrderRepository.findAll(pageable)

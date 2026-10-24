@@ -21,6 +21,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -160,6 +161,34 @@ class PurchaseServiceImplTest {
         verify(productRepository, never()).findByIdAndIsActiveTrue(any());
         verify(purchaseOrderRepository, never()).save(any());
         verify(purchaseProducer, never()).sendPurchaseEvent(any());
+    }
+
+    @Test
+    void shouldThrowExceptionWhenOptimisticLockingFailsDuringPurchase() {
+        Long productId = 1L;
+        int quantity = 2;
+
+        CreatePurchaseRequest.ItemRequest itemRequest = new CreatePurchaseRequest.ItemRequest(productId, quantity);
+        CreatePurchaseRequest request = new CreatePurchaseRequest("customer@test.com", List.of(itemRequest));
+
+        Product mockProduct = new Product();
+        mockProduct.setId(productId);
+        mockProduct.setName("Laptop Gaming");
+        mockProduct.setSku("LAP-001");
+        mockProduct.setPrice(BigDecimal.valueOf(1200.00));
+        mockProduct.setStock(10);
+        mockProduct.setVersion(1L);
+
+        when(productRepository.findByIdAndIsActiveTrue(productId)).thenReturn(Optional.of(mockProduct));
+
+        when(productRepository.save(any(Product.class)))
+                .thenThrow(new ObjectOptimisticLockingFailureException(Product.class, productId));
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class, () -> {
+            purchaseService.createPurchase(request);
+        });
+
+        assertTrue(exception.getMessage().contains("was updated by other transaction"));
     }
 
     @Test
