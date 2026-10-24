@@ -41,6 +41,7 @@ public class Product {
     private String description;
 
     @NotNull
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private ProductCategory category;
 

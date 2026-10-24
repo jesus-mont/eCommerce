@@ -2,6 +2,26 @@ import React, { useEffect, useState } from 'react';
 import api from '../services/api';
 
 export default function ProductAdmin() {
+  const CATEGORIES = [
+    { value: 'FOOTWEAR', label: 'Footwear' },
+    { value: 'FOOD_AND_BEVERAGE', label: 'Food & Beverage' },
+    { value: 'ELECTRONICS', label: 'Electronics' },
+    { value: 'ACCESSORIES', label: 'Accessories' },
+    { value: 'OUTDOORS', label: 'Outdoors' },
+    { value: 'SPORTS', label: 'Sports' },
+    { value: 'HOME_AND_OFFICE', label: 'Home & Office' },
+    { value: 'CLOTHING', label: 'Clothing' },
+    { value: 'KITCHEN', label: 'Kitchen' },
+    { value: 'BOOKS', label: 'Books' },
+    { value: 'BEAUTY', label: 'Beauty' },
+    { value: 'STATIONERY', label: 'Stationery' },
+    { value: 'GAMES', label: 'Games' },
+    { value: 'MISC', label: 'Misc' },
+    { value: 'GIFTS', label: 'Gifts' },
+    { value: 'PETS', label: 'Pets' },
+    { value: 'HEALTH', label: 'Health' },
+    { value: 'TOOLS', label: 'Tools' }
+  ];
   const [products, setProducts] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [formData, setFormData] = useState({
@@ -94,6 +114,11 @@ export default function ProductAdmin() {
     product.sku.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+  };
+
   return (
     <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
       <h2>Product Administration</h2>
@@ -130,10 +155,26 @@ export default function ProductAdmin() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', marginBottom: '15px' }}>
           <input type="text" name="name" placeholder="Name" value={formData.name} onChange={handleChange} required style={{ padding: '8px' }} />
           <input type="text" name="sku" placeholder="SKU" value={formData.sku} onChange={handleChange} required style={{ padding: '8px' }} />
-          <input type="text" name="category" placeholder="Category" value={formData.category} onChange={handleChange} style={{ padding: '8px' }} />
           <input type="number" step="0.01" name="price" placeholder="Price ($)" value={formData.price} onChange={handleChange} required style={{ padding: '8px' }} />
           <input type="number" name="stock" placeholder="Stock" value={formData.stock} onChange={handleChange} required style={{ padding: '8px' }} />
           <input type="number" step="0.01" name="weightKg" placeholder="Weight (kg)" value={formData.weightKg} onChange={handleChange} required style={{ padding: '8px' }} />
+          <div style={{ marginBottom: '15px' }}>
+            <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Category</label>
+              <select
+                name="category"
+                value={formData.category || ''}
+                onChange={handleInputChange}
+                style={{ padding: '8px', width: '100%', boxSizing: 'border-box', borderRadius: '4px', border: '1px solid #ccc' }}
+                required
+              >
+                <option value="">Select a category</option>
+                {CATEGORIES.map((cat) => (
+                  <option key={cat.value} value={cat.value}>
+                    {cat.label}
+                  </option>
+                ))}
+              </select>
+          </div>
         </div>
         <textarea name="description" placeholder="Description" value={formData.description} onChange={handleChange} rows="2" style={{ width: '100%', padding: '8px', marginBottom: '15px', boxSizing: 'border-box' }} />
         

@@ -3,7 +3,6 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import App from './App';
 
-// Mock de las vistas secundarias para aislar la prueba de navegación del componente App
 jest.mock('./pages/ProductCatalog', () => () => <div data-testid="product-catalog">Product Catalog View</div>);
 jest.mock('./pages/ProductAdmin', () => () => <div data-testid="product-admin">Product Admin View</div>);
 jest.mock('./pages/PurchaseHistory', () => () => <div data-testid="purchase-history">Purchase History View</div>);
