@@ -3,6 +3,7 @@ import api from '../services/api';
 
 export default function ProductAdmin() {
   const [products, setProducts] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
   const [formData, setFormData] = useState({
     id: null,
     name: '',
@@ -88,9 +89,14 @@ export default function ProductAdmin() {
     setIsEditing(false);
   };
 
+  const filteredProducts = products.filter((product) => 
+    product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    product.sku.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
-      <h2>Product Administration (CRUD)</h2>
+      <h2>Product Administration</h2>
 
       {message && (
         <div style={{ padding: '10px', marginBottom: '20px', color: message.type === 'success' ? 'green' : 'red', background: '#f9f9f9', border: '1px solid #ccc' }}>
@@ -143,7 +149,17 @@ export default function ProductAdmin() {
         </div>
       </form>
 
-      <h3>Current Inventory</h3>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+        <h3 style={{ margin: 0 }}>Current Inventory</h3>
+        <input 
+          type="text" 
+          placeholder="Search by name or SKU..." 
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          style={{ padding: '8px', width: '250px', borderRadius: '4px', border: '1px solid #ccc' }}
+        />
+      </div>
+
       <table style={{ width: '100%', borderCollapse: 'collapse', background: '#fff' }}>
         <thead>
           <tr style={{ background: '#eee', textAlign: 'left' }}>
@@ -155,26 +171,34 @@ export default function ProductAdmin() {
           </tr>
         </thead>
         <tbody>
-          {products.map((product) => (
-            <tr key={product.id}>
-              <td style={{ padding: '10px', border: '1px solid #ddd' }}>
-                <span 
-                  onClick={() => setSelectedProduct(product)} 
-                  style={{ color: '#007bff', cursor: 'pointer', textDecoration: 'underline' }}
-                  title="Click to view details"
-                >
-                  {product.name}
-                </span>
-              </td>
-              <td style={{ padding: '10px', border: '1px solid #ddd' }}>{product.sku}</td>
-              <td style={{ padding: '10px', border: '1px solid #ddd' }}>${product.price}</td>
-              <td style={{ padding: '10px', border: '1px solid #ddd' }}>{product.stock}</td>
-              <td style={{ padding: '10px', border: '1px solid #ddd' }}>
-                <button onClick={() => handleEdit(product)} style={{ marginRight: '8px', padding: '5px 10px', background: '#ffc107', border: 'none', borderRadius: '3px', cursor: 'pointer' }}>Edit</button>
-                <button onClick={() => handleDelete(product.id)} style={{ padding: '5px 10px', background: '#dc3545', color: '#fff', border: 'none', borderRadius: '3px', cursor: 'pointer' }}>Delete</button>
+          {filteredProducts.length > 0 ? (
+            filteredProducts.map((product) => (
+              <tr key={product.id}>
+                <td style={{ padding: '10px', border: '1px solid #ddd' }}>
+                  <span 
+                    onClick={() => setSelectedProduct(product)} 
+                    style={{ color: '#007bff', cursor: 'pointer', textDecoration: 'underline' }}
+                    title="Click to view details"
+                  >
+                    {product.name}
+                  </span>
+                </td>
+                <td style={{ padding: '10px', border: '1px solid #ddd' }}>{product.sku}</td>
+                <td style={{ padding: '10px', border: '1px solid #ddd' }}>${product.price}</td>
+                <td style={{ padding: '10px', border: '1px solid #ddd' }}>{product.stock}</td>
+                <td style={{ padding: '10px', border: '1px solid #ddd' }}>
+                  <button onClick={() => handleEdit(product)} style={{ marginRight: '8px', padding: '5px 10px', background: '#ffc107', border: 'none', borderRadius: '3px', cursor: 'pointer' }}>Edit</button>
+                  <button onClick={() => handleDelete(product.id)} style={{ padding: '5px 10px', background: '#dc3545', color: '#fff', border: 'none', borderRadius: '3px', cursor: 'pointer' }}>Delete</button>
+                </td>
+              </tr>
+            ))
+          ) : (
+            <tr>
+              <td colSpan="5" style={{ padding: '15px', textAlign: 'center', border: '1px solid #ddd', color: '#666' }}>
+                No products found matching your search.
               </td>
             </tr>
-          ))}
+          )}
         </tbody>
       </table>
     </div>

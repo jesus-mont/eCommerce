@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import ProductCatalog from './pages/ProductCatalog';
 import ProductAdmin from './pages/ProductAdmin';
+import PurchaseHistory from './pages/PurchaseHistory';
 
 function App() {
   const [currentView, setCurrentView] = useState('catalog');
@@ -21,9 +22,17 @@ function App() {
         >
           Product Management
         </button>
+        <button 
+          onClick={() => setCurrentView('purchases')}
+          style={{ background: currentView === 'purchases' ? '#007bff' : 'transparent', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: '4px', cursor: 'pointer' }}
+        >
+          Purchase History
+        </button>
       </nav>
 
-      {currentView === 'catalog' ? <ProductCatalog /> : <ProductAdmin />}
+      {currentView === 'catalog' && <ProductCatalog />}
+      {currentView === 'admin' && <ProductAdmin />}
+      {currentView === 'purchases' && <PurchaseHistory />}
     </div>
   );
 }
