@@ -17,9 +17,14 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -60,7 +65,6 @@ class PurchaseServiceImplTest {
 
         when(productRepository.findByIdAndIsActiveTrue(1L)).thenReturn(Optional.of(mockProduct));
 
-        // Simular guardado de la orden asignándole un ID simulado
         when(purchaseOrderRepository.save(any(PurchaseOrder.class))).thenAnswer(invocation -> {
             PurchaseOrder orderToSave = invocation.getArgument(0);
             orderToSave.setId(100L);
@@ -81,7 +85,6 @@ class PurchaseServiceImplTest {
         assertEquals(1, response.items().size());
         assertEquals("LAPTOP-SKU", response.items().get(0).sku());
 
-        // Verificar que se llamó al productor con el evento correspondiente
         ArgumentCaptor<PurchaseCreatedEvent> eventCaptor = ArgumentCaptor.forClass(PurchaseCreatedEvent.class);
         verify(purchaseProducer, times(1)).sendPurchaseEvent(eventCaptor.capture());
 
@@ -123,7 +126,7 @@ class PurchaseServiceImplTest {
                 .name("Smartphone")
                 .sku("PHONE-SKU")
                 .price(BigDecimal.valueOf(300.00))
-                .stock(5) // Solo hay 5 en stock
+                .stock(5)
                 .isActive(true)
                 .build();
 
@@ -138,5 +141,90 @@ class PurchaseServiceImplTest {
         assertEquals("Insufficient stock for product: Smartphone", exception.getMessage());
         verify(purchaseOrderRepository, never()).save(any());
         verify(purchaseProducer, never()).sendPurchaseEvent(any());
+    }
+
+    @Test
+    @DisplayName("throw IllegalArgumentException when purchase contains no items")
+    void createPurchase_EmptyItems() {
+        // Arrange
+        CreatePurchaseRequest request = new CreatePurchaseRequest("customer@example.com", List.of());
+
+        // Act & Assert
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> purchaseService.createPurchase(request)
+        );
+
+        assertEquals("Purchase must contain at least one item", exception.getMessage());
+
+        verify(productRepository, never()).findByIdAndIsActiveTrue(any());
+        verify(purchaseOrderRepository, never()).save(any());
+        verify(purchaseProducer, never()).sendPurchaseEvent(any());
+    }
+
+    @Test
+    @DisplayName("return paginated page of purchases")
+    void getAllPurchases_Success() {
+        // Arrange
+        Pageable pageable = PageRequest.of(0, 20);
+        PurchaseOrder purchase = PurchaseOrder.builder()
+                .id(1L)
+                .customerEmail("customer@example.com")
+                .status(OrderStatus.COMPLETED)
+                .createdAt(OffsetDateTime.now())
+                .totalAmount(BigDecimal.valueOf(1000))
+                .build();
+
+        Page<PurchaseOrder> purchasePage = new PageImpl<>(List.of(purchase), pageable, 1);
+        when(purchaseOrderRepository.findAll(pageable)).thenReturn(purchasePage);
+
+        // Act
+        Page<PurchaseResponse> responsePage = purchaseService.getAllPurchases(pageable);
+
+        // Assert
+        assertNotNull(responsePage);
+        assertEquals(1, responsePage.getTotalElements());
+        assertEquals("customer@example.com", responsePage.getContent().get(0).customerEmail());
+        verify(purchaseOrderRepository, times(1)).findAll(pageable);
+    }
+
+    @Test
+    @DisplayName("return purchase response when purchase exists by id")
+    void getPurchaseById_Success() {
+        // Arrange
+        Long purchaseId = 1L;
+        PurchaseOrder purchase = PurchaseOrder.builder()
+                .id(purchaseId)
+                .customerEmail("customer@example.com")
+                .totalAmount(BigDecimal.valueOf(500))
+                .build();
+
+        when(purchaseOrderRepository.findById(purchaseId)).thenReturn(Optional.of(purchase));
+
+        // Act
+        PurchaseResponse response = purchaseService.getPurchaseById(purchaseId);
+
+        // Assert
+        assertNotNull(response);
+        assertEquals(purchaseId, response.id());
+        assertEquals("customer@example.com", response.customerEmail());
+        verify(purchaseOrderRepository, times(1)).findById(purchaseId);
+    }
+
+    @Test
+    @DisplayName("throw ResourceNotFoundException when purchase does not exist by id")
+    void getPurchaseById_NotFound() {
+        // Arrange
+        Long purchaseId = 99L;
+        when(purchaseOrderRepository.findById(purchaseId)).thenReturn(Optional.empty());
+
+        // Act & Assert
+        ResourceNotFoundException exception = assertThrows(
+                ResourceNotFoundException.class,
+                () -> purchaseService.getPurchaseById(purchaseId)
+        );
+
+        assertEquals("Purchase not found with id: " + purchaseId, exception.getMessage());
+        verify(purchaseOrderRepository, times(1)).findById(purchaseId);
     }
 }

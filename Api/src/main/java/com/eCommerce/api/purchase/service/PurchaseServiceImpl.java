@@ -2,6 +2,7 @@ package com.eCommerce.api.purchase.service;
 
 import com.eCommerce.api.common.exception.ResourceNotFoundException;
 import com.eCommerce.api.product.domain.Product;
+import com.eCommerce.api.product.dto.ProductResponse;
 import com.eCommerce.api.product.repository.ProductRepository;
 import com.eCommerce.api.purchase.domain.OrderItem;
 import com.eCommerce.api.purchase.domain.OrderStatus;
@@ -11,8 +12,11 @@ import com.eCommerce.api.purchase.dto.PurchaseResponse;
 import com.eCommerce.api.purchase.event.PurchaseCreatedEvent;
 import com.eCommerce.api.purchase.messaging.PurchaseProducer;
 import com.eCommerce.api.purchase.repository.PurchaseOrderRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -51,7 +55,6 @@ public class PurchaseServiceImpl implements PurchaseService {
             Product product = productRepository.findByIdAndIsActiveTrue(itemReq.productId())
                     .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + itemReq.productId()));
 
-            // Opcional: Validar stock disponible
             if (product.getStock() < itemReq.quantity()) {
                 throw new IllegalArgumentException("Insufficient stock for product: " + product.getName());
             }
@@ -77,6 +80,10 @@ public class PurchaseServiceImpl implements PurchaseService {
             ));
         }
 
+        if(eventItems.isEmpty()){
+            throw new IllegalArgumentException("Purchase must contain at least one item");
+        }
+
         order.setTotalAmount(totalAmount);
         PurchaseOrder savedOrder = purchaseOrderRepository.save(order);
 
@@ -92,4 +99,17 @@ public class PurchaseServiceImpl implements PurchaseService {
 
         return PurchaseResponse.fromEntity(savedOrder);
     }
+
+    @Override
+    public Page<PurchaseResponse> getAllPurchases(Pageable pageable) {
+        return purchaseOrderRepository.findAll(pageable)
+                .map(PurchaseResponse::fromEntity);
+    }
+
+    @Transactional(readOnly = true)
+    public PurchaseResponse getPurchaseById(Long id) {
+        return purchaseOrderRepository.findById(id).map(PurchaseResponse::fromEntity)
+                .orElseThrow(() -> new ResourceNotFoundException("Purchase not found with id: " + id));
+    }
+
 }
