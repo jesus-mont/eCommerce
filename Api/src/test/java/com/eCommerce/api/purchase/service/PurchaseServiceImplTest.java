@@ -7,6 +7,7 @@ import com.eCommerce.api.purchase.domain.OrderStatus;
 import com.eCommerce.api.purchase.domain.PurchaseOrder;
 import com.eCommerce.api.purchase.dto.CreatePurchaseRequest;
 import com.eCommerce.api.purchase.dto.PurchaseResponse;
+import com.eCommerce.api.purchase.event.OrderCommittedEvent;
 import com.eCommerce.api.purchase.event.PurchaseCreatedEvent;
 import com.eCommerce.api.purchase.messaging.PurchaseProducer;
 import com.eCommerce.api.purchase.repository.PurchaseOrderRepository;
@@ -17,6 +18,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -44,6 +47,10 @@ class PurchaseServiceImplTest {
 
     @Mock
     private PurchaseProducer purchaseProducer;
+
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
+
 
     @InjectMocks
     private PurchaseServiceImpl purchaseService;
@@ -86,10 +93,13 @@ class PurchaseServiceImplTest {
         assertEquals(1, response.items().size());
         assertEquals("LAPTOP-SKU", response.items().get(0).sku());
 
-        ArgumentCaptor<PurchaseCreatedEvent> eventCaptor = ArgumentCaptor.forClass(PurchaseCreatedEvent.class);
-        verify(purchaseProducer, times(1)).sendPurchaseEvent(eventCaptor.capture());
+        ArgumentCaptor<OrderCommittedEvent> captor = ArgumentCaptor.forClass(OrderCommittedEvent.class);
 
-        PurchaseCreatedEvent capturedEvent = eventCaptor.getValue();
+        verify(eventPublisher, times(1)).publishEvent(captor.capture());
+
+        OrderCommittedEvent capturedWrapper = captor.getValue();
+        PurchaseCreatedEvent capturedEvent = capturedWrapper.purchaseEvent();
+
         assertEquals(100L, capturedEvent.orderId());
         assertEquals("cliente@example.com", capturedEvent.customerEmail());
         assertEquals(BigDecimal.valueOf(1000.00), capturedEvent.totalAmount());
