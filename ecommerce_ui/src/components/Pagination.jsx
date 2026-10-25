@@ -10,11 +10,11 @@ export default function Pagination({ currentPage, totalPages, onPageChange }) {
                 disabled={currentPage === 0}
                 className="pagination-btn"
             >
-                Anterior
+                Previos
             </button>
 
             <span style={{ alignSelf: 'center' }}>
-                Página {currentPage + 1} de {totalPages}
+                Page {currentPage + 1} de {totalPages}
             </span>
 
             <button 

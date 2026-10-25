@@ -1,56 +1,29 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import api from '../services/api';
+import ProductSearchBar from '../components/ProductSearchBar';
 import Pagination from '../components/Pagination';
 
 export default function ProductCatalog() {
   const [products, setProducts] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [cart, setCart] = useState([]); 
   const [customerEmail, setCustomerEmail] = useState('');
   const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
-  const [loading, setLoading] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  useEffect(() => {
-    fetchProducts();
-  }, []);
-
-  const fetchProducts = async (page = 0) => {
-    setLoading(true);
-    try {
-        const response = await api.get(`/products?page=${page}&size=20`);
-        const data = response.data;
-
-        // Validamos si viene en formato paginado de Spring (Page) o como lista plana
-        if (data.content) {
-            setProducts(data.content);
-            setTotalPages(data.totalPages);   
-            setCurrentPage(data.number);     
-        } else if (Array.isArray(data)) {
-            setProducts(data);
-            setTotalPages(1);
-            setCurrentPage(0);
-        } else {
-            setProducts([]);
-        }
-    } catch (error) {
-        console.error('Error fetching products:', error);
-        setProducts([]);
-    } finally {
-        setLoading(false);
-    }
+  // Callback que recibe los resultados procesados desde ProductSearchBar
+  const handleResultsFetched = ({ products, totalPages, number }) => {
+    setProducts(products);
+    setTotalPages(totalPages);
+    setCurrentPage(number);
   };
-  
-  useEffect(() => {
-    fetchProducts(currentPage);
-  }, [currentPage]);
 
   const handlePageChange = (newPage) => {
-        if (newPage >= 0 && newPage < totalPages) {
-            setCurrentPage(newPage);
-        }
-    };
+    if (newPage >= 0 && newPage < totalPages) {
+      setCurrentPage(newPage);
+    }
+  };
 
   const addToCart = (product) => {
     setCart((prevCart) => {
@@ -95,7 +68,7 @@ export default function ProductCatalog() {
       alert('Order successfully created! ID: ' + (response.data.id || 'Confirmed'));
       setCart([]);
       setCustomerEmail('');
-      fetchProducts();
+      setRefreshTrigger(prev => prev + 1); // Refresca el catálogo y stock actual
     } catch (error) {
       console.error('Error processing checkout:', error);
       const errorMsg = error.response?.data?.message || error.message;
@@ -105,29 +78,17 @@ export default function ProductCatalog() {
 
   const totalPrice = cart.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2);
 
-
-  const filteredProducts = Array.isArray(products) 
-    ? products.filter(p => 
-        (p.name && p.name.toLowerCase().includes(searchTerm.toLowerCase())) || 
-        (p.sku && p.sku.toLowerCase().includes(searchTerm.toLowerCase()))
-      ) 
-    : [];
-
   return (
     <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif', display: 'flex', gap: '20px' }}>
       
       <div style={{ flex: 2 }}>
         <h2>Product Catalog</h2>
-
-        <div style={{ marginBottom: '20px' }}>
-          <input 
-            type="text" 
-            placeholder="Search by name or SKU..." 
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            style={{ padding: '8px', width: '300px', boxSizing: 'border-box' }}
-          />
-        </div>
+        <ProductSearchBar 
+          currentPage={currentPage}
+          size={20}
+          refreshTrigger={refreshTrigger}
+          onResultsFetched={handleResultsFetched}
+        />
 
         {selectedProduct && (
           <div style={{ background: '#eef2f7', padding: '20px', borderRadius: '8px', marginBottom: '30px', border: '1px solid #cbd5e1' }}>
@@ -160,8 +121,8 @@ export default function ProductCatalog() {
             </tr>
           </thead>
           <tbody>
-            {filteredProducts.length > 0 ? (
-              filteredProducts.map((product) => (
+            {products.length > 0 ? (
+              products.map((product) => (
                 <tr key={product.id}>
                   <td style={{ padding: '10px', border: '1px solid #ddd' }}>
                     <span 
@@ -202,6 +163,7 @@ export default function ProductCatalog() {
             )}
           </tbody>
         </table>
+
         <Pagination 
           currentPage={currentPage} 
           totalPages={totalPages} 

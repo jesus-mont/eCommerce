@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import api from '../services/api';
+import ProductSearchBar from '../components/ProductSearchBar';
 import Pagination from '../components/Pagination';
-
 
 export default function ProductAdmin() {
   const CATEGORIES = [
@@ -24,8 +24,12 @@ export default function ProductAdmin() {
     { value: 'HEALTH', label: 'Health' },
     { value: 'TOOLS', label: 'Tools' }
   ];
+
   const [products, setProducts] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  
   const [formData, setFormData] = useState({
     id: null,
     name: '',
@@ -39,52 +43,27 @@ export default function ProductAdmin() {
   const [isEditing, setIsEditing] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [message, setMessage] = useState(null);
-  const [currentPage, setCurrentPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
-  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    fetchProducts();
-  }, []);
-
-  const fetchProducts = async (page = 0) => {
-    setLoading(true);
-    try {
-        const response = await api.get(`/products?page=${page}&size=20`);
-        const data = response.data;
-
-        // Validamos si viene en formato paginado de Spring (Page) o como lista plana
-        if (data.content) {
-            setProducts(data.content);
-            setTotalPages(data.totalPages);   
-            setCurrentPage(data.number);     
-        } else if (Array.isArray(data)) {
-            setProducts(data);
-            setTotalPages(1);
-            setCurrentPage(0);
-        } else {
-            setProducts([]);
-        }
-    } catch (error) {
-        console.error('Error fetching products:', error);
-        setProducts([]);
-    } finally {
-        setLoading(false);
-    }
+  // Callback que recibe los resultados procesados desde ProductSearchBar
+  const handleResultsFetched = ({ products, totalPages, number }) => {
+    setProducts(products);
+    setTotalPages(totalPages);
+    setCurrentPage(number);
   };
-  
-  useEffect(() => {
-    fetchProducts(currentPage);
-  }, [currentPage]);
 
   const handlePageChange = (newPage) => {
-        if (newPage >= 0 && newPage < totalPages) {
-            setCurrentPage(newPage);
-        }
-    };
+    if (newPage >= 0 && newPage < totalPages) {
+      setCurrentPage(newPage);
+    }
+  };
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
   };
 
   const handleSubmit = async (e) => {
@@ -98,7 +77,7 @@ export default function ProductAdmin() {
         setMessage({ type: 'success', text: 'Product created successfully!' });
       }
       resetForm();
-      fetchProducts();
+      setRefreshTrigger(prev => prev + 1); // Fuerza a la barra a recargar la data
     } catch (error) {
       const errorMsg = error.response?.data?.message || error.message;
       setMessage({ type: 'error', text: `Error: ${errorMsg}` });
@@ -120,7 +99,7 @@ export default function ProductAdmin() {
       if (selectedProduct && selectedProduct.id === id) {
         setSelectedProduct(null);
       }
-      fetchProducts();
+      setRefreshTrigger(prev => prev + 1); // Fuerza a la barra a recargar la data
     } catch (error) {
       setMessage({ type: 'error', text: 'Error deleting product' });
     }
@@ -138,16 +117,6 @@ export default function ProductAdmin() {
       weightKg: ''
     });
     setIsEditing(false);
-  };
-
-  const filteredProducts = products.filter((product) => 
-    product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.sku.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
   };
 
   return (
@@ -184,29 +153,39 @@ export default function ProductAdmin() {
       <form onSubmit={handleSubmit} style={{ background: '#f4f4f4', padding: '20px', borderRadius: '8px', marginBottom: '30px' }}>
         <h3>{isEditing ? 'Edit Product' : 'Create New Product'}</h3>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', marginBottom: '15px' }}>
+          
           <input type="text" name="name" placeholder="Name" value={formData.name} onChange={handleChange} required style={{ padding: '8px' }} />
           <input type="text" name="sku" placeholder="SKU" value={formData.sku} onChange={handleChange} required style={{ padding: '8px' }} />
           <input type="number" step="0.01" name="price" placeholder="Price ($)" value={formData.price} onChange={handleChange} required style={{ padding: '8px' }} />
           <input type="number" name="stock" placeholder="Stock" value={formData.stock} onChange={handleChange} required style={{ padding: '8px' }} />
           <input type="number" step="0.01" name="weightKg" placeholder="Weight (kg)" value={formData.weightKg} onChange={handleChange} required style={{ padding: '8px' }} />
-          <div style={{ marginBottom: '15px' }}>
-            <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Category</label>
-              <select
-                name="category"
-                value={formData.category || ''}
-                onChange={handleInputChange}
-                style={{ padding: '8px', width: '100%', boxSizing: 'border-box', borderRadius: '4px', border: '1px solid #ccc' }}
-                required
-              >
-                <option value="">Select a category</option>
-                {CATEGORIES.map((cat) => (
-                  <option key={cat.value} value={cat.value}>
-                    {cat.label}
-                  </option>
-                ))}
-              </select>
-          </div>
+          
+          {/* Select integrado directamente a la cuadrícula con el mismo diseño */}
+          <select
+            name="category"
+            value={formData.category || ''}
+            onChange={handleInputChange}
+            style={{ 
+              padding: '8px', 
+              width: '100%', 
+              boxSizing: 'border-box', 
+              borderRadius: '2px', 
+              border: '1px solid #767676', 
+              background: '#fff',
+              color: formData.category ? '#000' : '#757575' // Simula el tono de placeholder cuando no está seleccionado
+            }}
+            required
+          >
+            <option value="" disabled>Select a category</option>
+            {CATEGORIES.map((cat) => (
+              <option key={cat.value} value={cat.value} style={{ color: '#000' }}>
+                {cat.label}
+              </option>
+            ))}
+          </select>
+
         </div>
+        
         <textarea name="description" placeholder="Description" value={formData.description} onChange={handleChange} rows="2" style={{ width: '100%', padding: '8px', marginBottom: '15px', boxSizing: 'border-box' }} />
         
         <div style={{ display: 'flex', gap: '10px' }}>
@@ -221,16 +200,12 @@ export default function ProductAdmin() {
         </div>
       </form>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-        <h3 style={{ margin: 0 }}>Current Inventory</h3>
-        <input 
-          type="text" 
-          placeholder="Search by name or SKU..." 
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          style={{ padding: '8px', width: '250px', borderRadius: '4px', border: '1px solid #ccc' }}
-        />
-      </div>
+      <ProductSearchBar 
+        currentPage={currentPage}
+        size={20}
+        refreshTrigger={refreshTrigger}
+        onResultsFetched={handleResultsFetched}
+      />
 
       <table style={{ width: '100%', borderCollapse: 'collapse', background: '#fff' }}>
         <thead>
@@ -243,8 +218,8 @@ export default function ProductAdmin() {
           </tr>
         </thead>
         <tbody>
-          {filteredProducts.length > 0 ? (
-            filteredProducts.map((product) => (
+          {products.length > 0 ? (
+            products.map((product) => (
               <tr key={product.id}>
                 <td style={{ padding: '10px', border: '1px solid #ddd' }}>
                   <span 
@@ -267,17 +242,19 @@ export default function ProductAdmin() {
           ) : (
             <tr>
               <td colSpan="5" style={{ padding: '15px', textAlign: 'center', border: '1px solid #ddd', color: '#666' }}>
-                No products found matching your search.
+                No products found in the database.
               </td>
             </tr>
           )}
         </tbody>
       </table>
+
+      {/* Componente de Paginación */}
       <Pagination 
-          currentPage={currentPage} 
-          totalPages={totalPages} 
-          onPageChange={handlePageChange} 
-        />
+        currentPage={currentPage} 
+        totalPages={totalPages} 
+        onPageChange={handlePageChange} 
+      />
     </div>
   );
 }
