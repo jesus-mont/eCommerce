@@ -41,7 +41,6 @@ export default function ProductAdmin() {
     weightKg: ''
   });
   const [isEditing, setIsEditing] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState(null);
   const [message, setMessage] = useState(null);
 
   // Callback que recibe los resultados procesados desde ProductSearchBar
@@ -87,7 +86,6 @@ export default function ProductAdmin() {
   const handleEdit = (product) => {
     setFormData(product);
     setIsEditing(true);
-    setSelectedProduct(null);
     setMessage(null);
   };
 
@@ -96,9 +94,6 @@ export default function ProductAdmin() {
     try {
       await api.delete(`/products/${id}`);
       setMessage({ type: 'success', text: 'Product deleted successfully!' });
-      if (selectedProduct && selectedProduct.id === id) {
-        setSelectedProduct(null);
-      }
       setRefreshTrigger(prev => prev + 1); // Fuerza a la barra a recargar la data
     } catch (error) {
       setMessage({ type: 'error', text: 'Error deleting product' });
@@ -129,27 +124,7 @@ export default function ProductAdmin() {
         </div>
       )}
 
-      {selectedProduct && (
-        <div style={{ background: '#eef2f7', padding: '20px', borderRadius: '8px', marginBottom: '30px', border: '1px solid #cbd5e1' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-            <h3 style={{ margin: 0, color: '#1e293b' }}>Product Details: {selectedProduct.name}</h3>
-            <button 
-              onClick={() => setSelectedProduct(null)} 
-              style={{ background: '#64748b', color: '#fff', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer' }}
-            >
-              Close
-            </button>
-          </div>
-          <p><strong>ID:</strong> {selectedProduct.id}</p>
-          <p><strong>SKU:</strong> {selectedProduct.sku}</p>
-          <p><strong>Category:</strong> {selectedProduct.category || 'N/A'}</p>
-          <p><strong>Description:</strong> {selectedProduct.description || 'No description available.'}</p>
-          <p><strong>Price:</strong> ${selectedProduct.price}</p>
-          <p><strong>Stock:</strong> {selectedProduct.stock}</p>
-          <p><strong>Weight:</strong> {selectedProduct.weightKg} kg</p>
-        </div>
-      )}
-
+      {/* Formulario de Creación / Edición */}
       <form onSubmit={handleSubmit} style={{ background: '#f4f4f4', padding: '20px', borderRadius: '8px', marginBottom: '30px' }}>
         <h3>{isEditing ? 'Edit Product' : 'Create New Product'}</h3>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', marginBottom: '15px' }}>
@@ -172,7 +147,7 @@ export default function ProductAdmin() {
               borderRadius: '2px', 
               border: '1px solid #767676', 
               background: '#fff',
-              color: formData.category ? '#000' : '#757575' // Simula el tono de placeholder cuando no está seleccionado
+              color: formData.category ? '#000' : '#757575' 
             }}
             required
           >
@@ -222,10 +197,11 @@ export default function ProductAdmin() {
             products.map((product) => (
               <tr key={product.id}>
                 <td style={{ padding: '10px', border: '1px solid #ddd' }}>
+                  {/* Al hacer clic en el nombre, ahora llama a handleEdit(product) para rellenar el formulario */}
                   <span 
-                    onClick={() => setSelectedProduct(product)} 
+                    onClick={() => handleEdit(product)} 
                     style={{ color: '#007bff', cursor: 'pointer', textDecoration: 'underline' }}
-                    title="Click to view details"
+                    title="Click to edit product"
                   >
                     {product.name}
                   </span>
