@@ -3,14 +3,46 @@
 A production-ready, modular monolith e-commerce application built using **Java (Spring Boot)**, **React**, **PostgreSQL**, **Flyway**, and **RabbitMQ**, designed for transactional correctness, concurrency safety, and operational simplicity.
 
 ---
-
 ## 📌 Project Overview
 
 This repository contains an end-to-end e-commerce platform supporting product catalog management, bulk CSV imports with row-level validation, trigram-indexed search, and an idempotent checkout flow.
 
+### 🌐 Accessing the Services
+
+Once the containers are successfully running, you can access the various components at the following endpoints:
+
+| Service | Access URL / Port | Description |
+| :--- | :--- | :--- |
+| **Frontend Application** | `http://localhost:3000` | React Web UI |
+| **Backend API** | `http://localhost:8080` | Spring Boot REST Endpoints |
+| **RabbitMQ Management** | `http://localhost:15672` | Message Broker Dashboard (Default guest/guest credentials) |
+| **PostgreSQL Database** | `localhost:5432` | Relational Store (Creds defined in `docker-compose.yml`) |
+
+
+## 🐳 Running with Docker Compose
+You can spin up the entire stack (React Frontend, Spring Boot Backend, PostgreSQL Database, and RabbitMQ Message Broker) with a single command using Docker Compose.
+
+Prerequisites
+Docker and Docker Compose installed on your machine.
+
+Quick Start Instructions
+Clone the repository:
+
+git clone <repository-url>
+cd eComerce
+
+Start the application containers:
+Run the following command from the root directory containing the docker-compose.yml file:
+docker compose up --build
+
+Stop the containers:
+To stop the running services, press Ctrl + C in your terminal, or run:
+docker compose down
+
+
 ### Sample Data Details
-* **Example CSV File:** `Code Challenge E-Commerce`
-* **CSV Download Date:** October 21, 2026
+* **Example CSV File:** `Code Challenge E-Commerce` renamed to `products.csv`
+* **CSV Download Date:** October 22, 2026
 
 ---
 
