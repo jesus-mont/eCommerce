@@ -6,134 +6,544 @@ import api from '../services/api';
 
 jest.mock('../services/api');
 
-describe('ProductCatalog Component', () => {
+// Mock Pagination to allow direct testing of boundary cases in handlePageChange
+jest.mock('../components/Pagination', () => {
+  return function MockPagination({ currentPage, totalPages, onPageChange }) {
+    if (totalPages <= 1) return null;
+    return (
+      <div data-testid="pagination-controls">
+        <span>Page {currentPage + 1} de {totalPages}</span>
+        <button onClick={() => onPageChange(currentPage + 1)}>next</button>
+        <button onClick={() => onPageChange(currentPage - 1)}>Previos</button>
+        <button onClick={() => onPageChange(-1)}>Invalid Lower Bound</button>
+        <button onClick={() => onPageChange(totalPages)}>Invalid Upper Bound</button>
+      </div>
+    );
+  };
+});
 
+describe('ProductCatalog Component', () => {
   const mockProducts = [
     {
       id: 1,
-      name: 'Laptop',
-      sku: 'SKU-LAPTOP',
+      name: 'Wireless Mouse',
+      sku: 'SKU-MOUSE-01',
       category: 'Electronics',
-      description: 'Gaming laptop',
-      price: 1000,
+      description: 'Ergonomic wireless mouse',
+      price: 25.5,
       stock: 2,
-      weightKg: 2.0
+      weightKg: 0.2
     },
     {
       id: 2,
-      name: 'Headphones',
-      sku: 'SKU-HEADPHONES',
-      category: 'Audio',
-      description: 'Wireless headphones',
-      price: 150,
+      name: 'Mechanical Keyboard',
+      sku: 'SKU-KB-02',
+      category: 'Electronics',
+      description: 'RGB mechanical keyboard',
+      price: 75.0,
+      stock: 5,
+      weightKg: 1.1
+    },
+    {
+      id: 3,
+      name: 'USB-C Cable',
+      sku: 'SKU-CABLE-03',
+      category: '',
+      description: '',
+      price: 10.0,
       stock: 0,
-      weightKg: 0.3
+      weightKg: 0.05
     }
   ];
 
+  let alertSpy;
+  let consoleErrorSpy;
+
   beforeEach(() => {
     jest.clearAllMocks();
-    window.alert = jest.fn();
-    api.get.mockResolvedValue({ data: mockProducts });
+    alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {});
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
   });
 
-  test('renders catalog and fetches products on mount', async () => {
+  afterEach(() => {
+    alertSpy.mockRestore();
+    consoleErrorSpy.mockRestore();
+  });
+
+  test('renders catalog title, search bar, table headers, and empty state', async () => {
+    api.get.mockResolvedValueOnce({
+      data: {
+        content: [],
+        totalPages: 0,
+        number: 0
+      }
+    });
+
     render(<ProductCatalog />);
 
     expect(screen.getByText('Product Catalog')).toBeInTheDocument();
-
-    await waitFor(() => {
-      expect(screen.getByText('Laptop')).toBeInTheDocument();
-      expect(screen.getByText('Headphones')).toBeInTheDocument();
-    });
-
-    expect(api.get).toHaveBeenCalledWith('/products');
-  });
-
-  test('filters products table when typing in search input', async () => {
-    render(<ProductCatalog />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Laptop')).toBeInTheDocument();
-      expect(screen.getByText('Headphones')).toBeInTheDocument();
-    });
-
-    const searchInput = screen.getByPlaceholderText('Search by name or SKU...');
-    fireEvent.change(searchInput, { target: { value: 'Laptop' } });
-
-    expect(screen.getByText('Laptop')).toBeInTheDocument();
-    expect(screen.queryByText('Headphones')).not.toBeInTheDocument();
-  });
-
-  test('adds product to cart when clicking Add to Cart', async () => {
-    render(<ProductCatalog />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Laptop')).toBeInTheDocument();
-    });
-
-    const addButton = screen.getByRole('button', { name: /Add to Cart/i });
-    fireEvent.click(addButton);
-
-    expect(screen.getByText('Shopping Cart')).toBeInTheDocument();
-    expect(screen.getByText('1 x $1000')).toBeInTheDocument();
-    expect(screen.getByText('Total: $1000.00')).toBeInTheDocument();
-  });
-
-  test('shows alert when exceeding stock limit', async () => {
-    render(<ProductCatalog />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Laptop')).toBeInTheDocument();
-    });
-
-    const addButton = screen.getByRole('button', { name: /Add to Cart/i });
-    
-    fireEvent.click(addButton);
-    fireEvent.click(addButton);
-    fireEvent.click(addButton);
-
-    expect(window.alert).toHaveBeenCalledWith('Cannot add more units. Stock limit reached.');
-  });
-
-  test('removes item from cart when clicking Remove', async () => {
-    render(<ProductCatalog />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Laptop')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: /Add to Cart/i }));
-    expect(screen.getByText('1 x $1000')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: /Remove/i }));
+    expect(screen.getByPlaceholderText('Search by name or SKU...')).toBeInTheDocument();
+    expect(screen.getByText('Name')).toBeInTheDocument();
+    expect(screen.getByText('SKU')).toBeInTheDocument();
+    expect(screen.getByText('Price')).toBeInTheDocument();
+    expect(screen.getByText('Stock')).toBeInTheDocument();
+    expect(screen.getByText('Actions')).toBeInTheDocument();
     expect(screen.getByText('Your cart is empty.')).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByText('No products found.')).toBeInTheDocument();
+    });
   });
 
-  test('processes checkout successfully when email and cart are valid', async () => {
-    api.post.mockResolvedValue({ data: { id: 101 } });
+  test('renders fetched products correctly including in-stock and out-of-stock items', async () => {
+    api.get.mockResolvedValueOnce({
+      data: {
+        content: mockProducts,
+        totalPages: 1,
+        number: 0
+      }
+    });
 
     render(<ProductCatalog />);
 
     await waitFor(() => {
-      expect(screen.getByText('Laptop')).toBeInTheDocument();
+      expect(screen.getByText('Wireless Mouse')).toBeInTheDocument();
+      expect(screen.getByText('SKU-MOUSE-01')).toBeInTheDocument();
+      expect(screen.getByText('$25.5')).toBeInTheDocument();
+      expect(screen.getByText('Mechanical Keyboard')).toBeInTheDocument();
+      expect(screen.getByText('SKU-KB-02')).toBeInTheDocument();
+      expect(screen.getByText('$75')).toBeInTheDocument();
+      expect(screen.getByText('USB-C Cable')).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /Add to Cart/i }));
+    const addToCartButtons = screen.getAllByRole('button', { name: /Add to Cart/i });
+    expect(addToCartButtons).toHaveLength(2);
+
+    const outOfStockButton = screen.getByRole('button', { name: /Out of Stock/i });
+    expect(outOfStockButton).toBeInTheDocument();
+    expect(outOfStockButton).toBeDisabled();
+  });
+
+  test('renders products when api returns a plain array instead of a page object', async () => {
+    api.get.mockResolvedValueOnce({
+      data: [mockProducts[0]]
+    });
+
+    render(<ProductCatalog />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Wireless Mouse')).toBeInTheDocument();
+    });
+  });
+
+  test('displays product details on click and closes details on close button click', async () => {
+    api.get.mockResolvedValueOnce({
+      data: {
+        content: mockProducts,
+        totalPages: 1,
+        number: 0
+      }
+    });
+
+    render(<ProductCatalog />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Wireless Mouse')).toBeInTheDocument();
+    });
+
+    // Click on product name to view details
+    fireEvent.click(screen.getByText('Wireless Mouse'));
+
+    expect(screen.getByText('Product Details: Wireless Mouse')).toBeInTheDocument();
+    expect(screen.getAllByText('SKU-MOUSE-01')).toHaveLength(2);
+    expect(screen.getByText(/Electronics/i)).toBeInTheDocument();
+    expect(screen.getByText(/Ergonomic wireless mouse/i)).toBeInTheDocument();
+    expect(screen.getAllByText('$25.5')).toHaveLength(2);
+    expect(screen.getByText(/0.2 kg/i)).toBeInTheDocument();
+
+    // Close details
+    const closeBtn = screen.getByRole('button', { name: /Close/i });
+    fireEvent.click(closeBtn);
+
+    expect(screen.queryByText('Product Details: Wireless Mouse')).not.toBeInTheDocument();
+  });
+
+  test('displays fallback values for category and description when missing', async () => {
+    api.get.mockResolvedValueOnce({
+      data: {
+        content: mockProducts,
+        totalPages: 1,
+        number: 0
+      }
+    });
+
+    render(<ProductCatalog />);
+
+    await waitFor(() => {
+      expect(screen.getByText('USB-C Cable')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('USB-C Cable'));
+
+    expect(screen.getByText('Product Details: USB-C Cable')).toBeInTheDocument();
+    expect(screen.getByText('N/A')).toBeInTheDocument();
+    expect(screen.getByText('No description available.')).toBeInTheDocument();
+  });
+
+  test('adds multiple items to shopping cart, increments quantities, and calculates total price', async () => {
+    api.get.mockResolvedValueOnce({
+      data: {
+        content: mockProducts,
+        totalPages: 1,
+        number: 0
+      }
+    });
+
+    render(<ProductCatalog />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Wireless Mouse')).toBeInTheDocument();
+    });
+
+    const addButtons = screen.getAllByRole('button', { name: /Add to Cart/i });
+
+    // Add Wireless Mouse (price: 25.5) -> quantity 1
+    fireEvent.click(addButtons[0]);
+
+    expect(screen.queryByText('Your cart is empty.')).not.toBeInTheDocument();
+    expect(screen.getByText('1 x $25.5')).toBeInTheDocument();
+    expect(screen.getByText('Total: $25.50')).toBeInTheDocument();
+
+    // Add Mechanical Keyboard (price: 75) -> quantity 1
+    fireEvent.click(addButtons[1]);
+
+    expect(screen.getByText('1 x $75')).toBeInTheDocument();
+    expect(screen.getByText('Total: $100.50')).toBeInTheDocument();
+
+    // Increment Wireless Mouse while keyboard is also in the cart
+    // This exercises the branch where map traverses other items (item.id !== product.id)
+    fireEvent.click(addButtons[0]);
+
+    expect(screen.getByText('2 x $25.5')).toBeInTheDocument();
+    expect(screen.getByText('1 x $75')).toBeInTheDocument();
+    expect(screen.getByText('Total: $126.00')).toBeInTheDocument();
+  });
+
+  test('alerts and prevents adding more items than available stock', async () => {
+    api.get.mockResolvedValueOnce({
+      data: {
+        content: mockProducts,
+        totalPages: 1,
+        number: 0
+      }
+    });
+
+    render(<ProductCatalog />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Wireless Mouse')).toBeInTheDocument();
+    });
+
+    const addButtons = screen.getAllByRole('button', { name: /Add to Cart/i });
+
+    // Wireless Mouse stock is 2
+    fireEvent.click(addButtons[0]); // quantity: 1
+    fireEvent.click(addButtons[0]); // quantity: 2
+    fireEvent.click(addButtons[0]); // exceeds stock -> triggers alert
+
+    expect(alertSpy).toHaveBeenCalledWith('Cannot add more units. Stock limit reached.');
+    expect(screen.getByText('2 x $25.5')).toBeInTheDocument();
+    expect(screen.getByText('Total: $51.00')).toBeInTheDocument();
+  });
+
+  test('removes items from cart and updates empty state', async () => {
+    api.get.mockResolvedValueOnce({
+      data: {
+        content: mockProducts,
+        totalPages: 1,
+        number: 0
+      }
+    });
+
+    render(<ProductCatalog />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Wireless Mouse')).toBeInTheDocument();
+    });
+
+    const addButtons = screen.getAllByRole('button', { name: /Add to Cart/i });
+    fireEvent.click(addButtons[0]); // Wireless Mouse
+    fireEvent.click(addButtons[1]); // Keyboard
+
+    expect(screen.getByText('Total: $100.50')).toBeInTheDocument();
+
+    const removeButtons = screen.getAllByRole('button', { name: /Remove/i });
+    // Remove first item
+    fireEvent.click(removeButtons[0]);
+
+    expect(screen.queryByText('1 x $25.5')).not.toBeInTheDocument();
+    expect(screen.getByText('1 x $75')).toBeInTheDocument();
+    expect(screen.getByText('Total: $75.00')).toBeInTheDocument();
+
+    // Remove remaining item
+    const remainingRemoveButton = screen.getByRole('button', { name: /Remove/i });
+    fireEvent.click(remainingRemoveButton);
+
+    expect(screen.getByText('Your cart is empty.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Proceed to Checkout/i })).not.toBeInTheDocument();
+  });
+
+  test('shows alert when attempting checkout without email', async () => {
+    api.get.mockResolvedValueOnce({
+      data: {
+        content: mockProducts,
+        totalPages: 1,
+        number: 0
+      }
+    });
+
+    render(<ProductCatalog />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Wireless Mouse')).toBeInTheDocument();
+    });
+
+    const addButtons = screen.getAllByRole('button', { name: /Add to Cart/i });
+    fireEvent.click(addButtons[0]);
+
+    const checkoutButton = screen.getByRole('button', { name: /Proceed to Checkout/i });
+    fireEvent.click(checkoutButton);
+
+    expect(alertSpy).toHaveBeenCalledWith('Please enter your customer email.');
+    expect(api.post).not.toHaveBeenCalled();
+  });
+
+  test('successfully processes checkout with returned order ID', async () => {
+    api.get.mockResolvedValueOnce({
+      data: {
+        content: mockProducts,
+        totalPages: 1,
+        number: 0
+      }
+    });
+    api.post.mockResolvedValueOnce({
+      data: { id: 999 }
+    });
+
+    render(<ProductCatalog />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Wireless Mouse')).toBeInTheDocument();
+    });
+
+    const addButtons = screen.getAllByRole('button', { name: /Add to Cart/i });
+    fireEvent.click(addButtons[0]);
 
     const emailInput = screen.getByPlaceholderText('customer@example.com');
-    fireEvent.change(emailInput, { target: { value: 'customer@example.com' } });
+    fireEvent.change(emailInput, { target: { value: 'buyer@test.com' } });
 
-    fireEvent.click(screen.getByRole('button', { name: /Proceed to Checkout/i }));
+    const checkoutButton = screen.getByRole('button', { name: /Proceed to Checkout/i });
+    fireEvent.click(checkoutButton);
 
     await waitFor(() => {
       expect(api.post).toHaveBeenCalledWith('/purchases', {
-        customerEmail: 'customer@example.com',
+        customerEmail: 'buyer@test.com',
         items: [{ productId: 1, quantity: 1 }]
       });
-      expect(window.alert).toHaveBeenCalledWith('Order successfully created! ID: 101');
+      expect(alertSpy).toHaveBeenCalledWith('Order successfully created! ID: 999');
       expect(screen.getByText('Your cart is empty.')).toBeInTheDocument();
     });
   });
 
+  test('successfully processes checkout when response has no ID (fallback "Confirmed")', async () => {
+    api.get.mockResolvedValueOnce({
+      data: {
+        content: mockProducts,
+        totalPages: 1,
+        number: 0
+      }
+    });
+    api.post.mockResolvedValueOnce({
+      data: {}
+    });
+
+    render(<ProductCatalog />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Wireless Mouse')).toBeInTheDocument();
+    });
+
+    const addButtons = screen.getAllByRole('button', { name: /Add to Cart/i });
+    fireEvent.click(addButtons[0]);
+
+    const emailInput = screen.getByPlaceholderText('customer@example.com');
+    fireEvent.change(emailInput, { target: { value: 'buyer@test.com' } });
+
+    fireEvent.click(screen.getByRole('button', { name: /Proceed to Checkout/i }));
+
+    await waitFor(() => {
+      expect(alertSpy).toHaveBeenCalledWith('Order successfully created! ID: Confirmed');
+    });
+  });
+
+  test('handles checkout failure with server response error message', async () => {
+    api.get.mockResolvedValueOnce({
+      data: {
+        content: mockProducts,
+        totalPages: 1,
+        number: 0
+      }
+    });
+    api.post.mockRejectedValueOnce({
+      response: {
+        data: {
+          message: 'Insufficient stock in warehouse'
+        }
+      }
+    });
+
+    render(<ProductCatalog />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Wireless Mouse')).toBeInTheDocument();
+    });
+
+    const addButtons = screen.getAllByRole('button', { name: /Add to Cart/i });
+    fireEvent.click(addButtons[0]);
+
+    const emailInput = screen.getByPlaceholderText('customer@example.com');
+    fireEvent.change(emailInput, { target: { value: 'buyer@test.com' } });
+
+    fireEvent.click(screen.getByRole('button', { name: /Proceed to Checkout/i }));
+
+    await waitFor(() => {
+      expect(consoleErrorSpy).toHaveBeenCalled();
+      expect(alertSpy).toHaveBeenCalledWith('Error processing order: Insufficient stock in warehouse');
+      expect(screen.getByText('1 x $25.5')).toBeInTheDocument();
+    });
+  });
+
+  test('handles checkout failure with generic error message', async () => {
+    api.get.mockResolvedValueOnce({
+      data: {
+        content: mockProducts,
+        totalPages: 1,
+        number: 0
+      }
+    });
+    api.post.mockRejectedValueOnce(new Error('Network failure'));
+
+    render(<ProductCatalog />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Wireless Mouse')).toBeInTheDocument();
+    });
+
+    const addButtons = screen.getAllByRole('button', { name: /Add to Cart/i });
+    fireEvent.click(addButtons[0]);
+
+    const emailInput = screen.getByPlaceholderText('customer@example.com');
+    fireEvent.change(emailInput, { target: { value: 'buyer@test.com' } });
+
+    fireEvent.click(screen.getByRole('button', { name: /Proceed to Checkout/i }));
+
+    await waitFor(() => {
+      expect(consoleErrorSpy).toHaveBeenCalled();
+      expect(alertSpy).toHaveBeenCalledWith('Error processing order: Network failure');
+    });
+  });
+
+  test('filters catalog using ProductSearchBar search input', async () => {
+    api.get.mockResolvedValueOnce({
+      data: {
+        content: mockProducts,
+        totalPages: 1,
+        number: 0
+      }
+    });
+
+    render(<ProductCatalog />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Wireless Mouse')).toBeInTheDocument();
+    });
+
+    api.get.mockResolvedValueOnce({
+      data: {
+        content: [mockProducts[1]],
+        totalPages: 1,
+        number: 0
+      }
+    });
+
+    const searchInput = screen.getByPlaceholderText('Search by name or SKU...');
+    fireEvent.change(searchInput, { target: { value: 'Keyboard' } });
+
+    await waitFor(() => {
+      expect(api.get).toHaveBeenCalledWith('/products/search?q=Keyboard&page=0&size=20');
+      expect(screen.getByText('Mechanical Keyboard')).toBeInTheDocument();
+    });
+  });
+
+  test('handles pagination navigation and validates boundary conditions', async () => {
+    api.get.mockResolvedValueOnce({
+      data: {
+        content: [mockProducts[0]],
+        totalPages: 2,
+        number: 0
+      }
+    });
+
+    render(<ProductCatalog />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Wireless Mouse')).toBeInTheDocument();
+      expect(screen.getByText('Page 1 de 2')).toBeInTheDocument();
+    });
+
+    // Test out of bounds: negative page index (ignored by handlePageChange)
+    const invalidLowerBtn = screen.getByRole('button', { name: /Invalid Lower Bound/i });
+    fireEvent.click(invalidLowerBtn);
+    expect(api.get).toHaveBeenCalledTimes(1); // No new request made
+
+    // Test out of bounds: newPage >= totalPages (ignored by handlePageChange)
+    const invalidUpperBtn = screen.getByRole('button', { name: /Invalid Upper Bound/i });
+    fireEvent.click(invalidUpperBtn);
+    expect(api.get).toHaveBeenCalledTimes(1); // No new request made
+
+    // Navigate to page 1
+    api.get.mockResolvedValueOnce({
+      data: {
+        content: [mockProducts[1]],
+        totalPages: 2,
+        number: 1
+      }
+    });
+
+    const nextBtn = screen.getByRole('button', { name: /next/i });
+    fireEvent.click(nextBtn);
+
+    await waitFor(() => {
+      expect(api.get).toHaveBeenCalledWith('/products?page=1&size=20');
+      expect(screen.getByText('Mechanical Keyboard')).toBeInTheDocument();
+      expect(screen.getByText('Page 2 de 2')).toBeInTheDocument();
+    });
+
+    // Navigate back to page 0
+    api.get.mockResolvedValueOnce({
+      data: {
+        content: [mockProducts[0]],
+        totalPages: 2,
+        number: 0
+      }
+    });
+
+    const prevBtn = screen.getByRole('button', { name: /Previos/i });
+    fireEvent.click(prevBtn);
+
+    await waitFor(() => {
+      expect(api.get).toHaveBeenCalledWith('/products?page=0&size=20');
+      expect(screen.getByText('Wireless Mouse')).toBeInTheDocument();
+    });
+  });
 });
