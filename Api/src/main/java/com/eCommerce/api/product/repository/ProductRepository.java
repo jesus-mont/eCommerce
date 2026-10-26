@@ -27,18 +27,6 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     Page<Product> searchProducts(@Param("keyword") String keyword, Pageable pageable);
 
     @Modifying
-    @Query("""
-        UPDATE Product p 
-        SET p.stock = p.stock - :quantity 
-        WHERE p.id = :id AND p.stock >= :quantity AND p.isActive = true
-    """)
-    int reserveStock(@Param("id") Long id, @Param("quantity") Integer quantity);
-
-    @Modifying
-    @Query("""
-        UPDATE Product p 
-        SET p.stock = p.stock + :quantity 
-        WHERE p.id = :id AND p.isActive = true
-    """)
-    int releaseStock(@Param("id") Long id, @Param("quantity") Integer quantity);
+    @Query("UPDATE Product p SET p.stock = p.stock + :qty WHERE p.id = :id")
+    void restoreStock(@Param("id") Long productId, @Param("qty") int quantity);
 }

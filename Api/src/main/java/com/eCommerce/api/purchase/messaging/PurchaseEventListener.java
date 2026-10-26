@@ -1,6 +1,8 @@
 package com.eCommerce.api.purchase.messaging;
 
 import com.eCommerce.api.config.RabbitMQConfig;
+import com.eCommerce.api.product.repository.ProductRepository;
+import com.eCommerce.api.purchase.domain.OrderItem;
 import com.eCommerce.api.purchase.domain.OrderStatus;
 import com.eCommerce.api.purchase.domain.PurchaseOrder;
 import com.eCommerce.api.purchase.event.PurchaseCreatedEvent;
@@ -15,13 +17,16 @@ import java.util.Optional;
 public class PurchaseEventListener {
 
     private final PurchaseOrderRepository purchaseOrderRepository;
+    private final ProductRepository productRepository;
 
-    public PurchaseEventListener(PurchaseOrderRepository purchaseOrderRepository) {
+    public PurchaseEventListener(PurchaseOrderRepository purchaseOrderRepository, ProductRepository productRepository) {
         this.purchaseOrderRepository = purchaseOrderRepository;
+        this.productRepository = productRepository;
     }
 
     @RabbitListener(queues = RabbitMQConfig.PURCHASE_QUEUE)
     public void handlePurchaseCreated(PurchaseCreatedEvent event) {
+        Long orderId = event.orderId();
         Optional<PurchaseOrder> optionalOrder = purchaseOrderRepository.findById(event.orderId());
 
         if (optionalOrder.isEmpty()) {
@@ -29,12 +34,34 @@ public class PurchaseEventListener {
             return;
         }
 
+
         PurchaseOrder order = optionalOrder.get();
-        if (order.getStatus() == OrderStatus.COMPLETED) {
+        if (!OrderStatus.PENDING.equals(order.getStatus())) {
             return;
         }
+        boolean paymentSuccess = simulatePaymentGateway(order);
 
-        order.setStatus(OrderStatus.COMPLETED);
-        purchaseOrderRepository.save(order);
+        if (paymentSuccess) {
+            order.setStatus(OrderStatus.COMPLETED);
+            purchaseOrderRepository.save(order);
+            System.out.println("Payment SUCCESS for order ID: " + orderId);
+        } else {
+            order.setStatus(OrderStatus.FAILED);
+            purchaseOrderRepository.save(order);
+
+            for (OrderItem item : order.getItems()) {
+                productRepository.restoreStock(item.getProductId(), item.getQuantity());
+            }
+            System.out.println("Payment FAILED for order ID: " + orderId + ". Stock restored.");
+        }
+
+    }
+
+    private boolean simulatePaymentGateway(PurchaseOrder order) {
+
+        if (order.getCustomerEmail() != null && order.getCustomerEmail().contains("fail")) {
+            return false;
+        }
+       return true;
     }
 }
