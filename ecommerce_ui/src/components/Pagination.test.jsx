@@ -17,7 +17,6 @@ describe('Pagination Component', () => {
       <Pagination currentPage={1} totalPages={5} onPageChange={() => {}} />
     );
     
-    // El componente muestra "Page 2 de 5" porque currentPage es 1 (0-indexed)
     expect(screen.getByText('Page 2 de 5')).toBeInTheDocument();
   });
 
@@ -46,7 +45,7 @@ describe('Pagination Component', () => {
   });
 
   test('calls onPageChange with previous page index when clicking "Previos"', () => {
-    const handlePageChange = jest.fn(); // o vi.fn() si usas Vitest
+    const handlePageChange = jest.fn(); 
     render(
       <Pagination currentPage={2} totalPages={5} onPageChange={handlePageChange} />
     );
@@ -54,13 +53,12 @@ describe('Pagination Component', () => {
     const prevButton = screen.getByRole('button', { name: /previos/i });
     fireEvent.click(prevButton);
 
-    // Debe restar 1 a la página actual (2 - 1 = 1)
     expect(handlePageChange).toHaveBeenCalledTimes(1);
     expect(handlePageChange).toHaveBeenCalledWith(1);
   });
 
   test('calls onPageChange with next page index when clicking "next"', () => {
-    const handlePageChange = jest.fn(); // o vi.fn() si usas Vitest
+    const handlePageChange = jest.fn();
     render(
       <Pagination currentPage={1} totalPages={5} onPageChange={handlePageChange} />
     );
@@ -68,7 +66,6 @@ describe('Pagination Component', () => {
     const nextButton = screen.getByRole('button', { name: /next/i });
     fireEvent.click(nextButton);
 
-    // Debe sumar 1 a la página actual (1 + 1 = 2)
     expect(handlePageChange).toHaveBeenCalledTimes(1);
     expect(handlePageChange).toHaveBeenCalledWith(2);
   });

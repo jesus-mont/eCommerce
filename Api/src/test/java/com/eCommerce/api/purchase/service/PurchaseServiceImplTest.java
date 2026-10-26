@@ -89,7 +89,7 @@ class PurchaseServiceImplTest {
         assertEquals(100L, response.id());
         assertEquals("cliente@example.com", response.customerEmail());
         assertEquals(OrderStatus.PENDING, response.status());
-        assertEquals(BigDecimal.valueOf(1000.00), response.totalAmount()); // 500.00 * 2
+        assertEquals(BigDecimal.valueOf(1000.00), response.totalAmount());
         assertEquals(1, response.items().size());
         assertEquals("LAPTOP-SKU", response.items().get(0).sku());
 
@@ -129,7 +129,7 @@ class PurchaseServiceImplTest {
     @DisplayName("Should throw IllegalArgumentException when product stock is insufficient")
     void createPurchase_InsufficientStock() {
         // Arrange
-        CreatePurchaseRequest.ItemRequest itemReq = new CreatePurchaseRequest.ItemRequest(1L, 15); // Pide 15
+        CreatePurchaseRequest.ItemRequest itemReq = new CreatePurchaseRequest.ItemRequest(1L, 15);
         CreatePurchaseRequest request = new CreatePurchaseRequest("cliente@example.com", List.of(itemReq));
 
         Product mockProduct = Product.builder()

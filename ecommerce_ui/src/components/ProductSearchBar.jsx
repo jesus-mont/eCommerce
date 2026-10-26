@@ -17,7 +17,6 @@ export default function ProductSearchBar({ onResultsFetched, currentPage, size =
       const response = await api.get(endpoint);
       const data = response.data;
       
-      // Enviamos los datos procesados hacia el componente padre
       if (data.content) {
         onResultsFetched({
           products: data.content,
@@ -41,7 +40,6 @@ export default function ProductSearchBar({ onResultsFetched, currentPage, size =
     }
   };
 
-  // Se ejecuta al cambiar la página, el término de búsqueda o cuando se dispara una actualización externa (como crear/editar/borrar)
   useEffect(() => {
     fetchProducts(currentPage, searchTerm);
   }, [currentPage, searchTerm, refreshTrigger]);

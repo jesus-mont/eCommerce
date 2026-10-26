@@ -4,7 +4,6 @@ import '@testing-library/jest-dom';
 import PurchaseHistory from './PurchaseHistory';
 import api from '../services/api';
 
-// Mocks de la API
 jest.mock('../services/api');
 
 describe('PurchaseHistory Component - Complete Coverage', () => {
@@ -25,7 +24,6 @@ describe('PurchaseHistory Component - Complete Coverage', () => {
   };
 
   beforeAll(() => {
-    // Silencia console.error para los tests de errores esperados
     jest.spyOn(console, 'error').mockImplementation(() => {});
   });
 
@@ -135,7 +133,6 @@ describe('PurchaseHistory Component - Complete Coverage', () => {
       expect(screen.getByText('detail@example.com')).toBeInTheDocument();
     });
 
-    // Clic en "View Details"
     fireEvent.click(screen.getByRole('button', { name: /view details/i }));
 
     await waitFor(() => {
@@ -146,7 +143,6 @@ describe('PurchaseHistory Component - Complete Coverage', () => {
       expect(screen.getByText('2026-06-01')).toBeInTheDocument();
     });
 
-    // Clic en "Close Details"
     fireEvent.click(screen.getByRole('button', { name: /close details/i }));
     expect(screen.queryByText('COMPLETED')).not.toBeInTheDocument();
     expect(screen.getByText('Select a purchase to view its details.')).toBeInTheDocument();

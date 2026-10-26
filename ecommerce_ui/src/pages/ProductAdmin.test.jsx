@@ -6,7 +6,6 @@ import api from '../services/api';
 
 jest.mock('../services/api');
 
-// Mock Pagination to allow direct testing of boundary cases in handlePageChange
 jest.mock('../components/Pagination', () => {
   return function MockPagination({ currentPage, totalPages, onPageChange }) {
     if (totalPages <= 1) return null;
@@ -250,7 +249,6 @@ describe('ProductAdmin Component', () => {
     expect(screen.getByPlaceholderText('SKU').value).toBe('SKU-LAPTOP');
     expect(screen.getByRole('combobox').value).toBe('ELECTRONICS');
 
-    // Update name and price
     fireEvent.change(screen.getByPlaceholderText('Name'), { target: { value: 'Laptop Pro' } });
     fireEvent.change(screen.getByPlaceholderText('Price ($)'), { target: { value: '1500' } });
 
@@ -282,7 +280,6 @@ describe('ProductAdmin Component', () => {
       expect(screen.getByText('Laptop')).toBeInTheDocument();
     });
 
-    // Click on product name span
     fireEvent.click(screen.getByText('Laptop'));
 
     expect(screen.getByText('Edit Product')).toBeInTheDocument();
@@ -416,17 +413,14 @@ describe('ProductAdmin Component', () => {
       expect(screen.getByText('Page 1 de 2')).toBeInTheDocument();
     });
 
-    // Test out of bounds: negative page index (ignored by handlePageChange)
     const invalidLowerBtn = screen.getByRole('button', { name: /Invalid Lower Bound/i });
     fireEvent.click(invalidLowerBtn);
     expect(api.get).toHaveBeenCalledTimes(1);
 
-    // Test out of bounds: newPage >= totalPages (ignored by handlePageChange)
     const invalidUpperBtn = screen.getByRole('button', { name: /Invalid Upper Bound/i });
     fireEvent.click(invalidUpperBtn);
     expect(api.get).toHaveBeenCalledTimes(1);
 
-    // Navigate to page 1
     api.get.mockResolvedValueOnce({
       data: {
         content: [mockProducts[1]],
@@ -444,7 +438,6 @@ describe('ProductAdmin Component', () => {
       expect(screen.getByText('Page 2 de 2')).toBeInTheDocument();
     });
 
-    // Navigate back to page 0
     api.get.mockResolvedValueOnce({
       data: {
         content: [mockProducts[0]],

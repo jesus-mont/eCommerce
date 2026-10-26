@@ -41,7 +41,7 @@ class CreatePurchaseRequestTest {
     @Test
     @DisplayName("Should fail validation when email is blank or invalid")
     void testInvalidEmail() {
-        // Arrange: Email vacío
+        // Arrange:
         CreatePurchaseRequest.ItemRequest itemReq = new CreatePurchaseRequest.ItemRequest(1L, 2);
         CreatePurchaseRequest requestBlank = new CreatePurchaseRequest("", List.of(itemReq));
         CreatePurchaseRequest requestInvalid = new CreatePurchaseRequest("correo-malformado", List.of(itemReq));

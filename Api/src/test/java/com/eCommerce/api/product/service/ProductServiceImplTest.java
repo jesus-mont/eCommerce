@@ -57,7 +57,7 @@ class ProductServiceImplTest {
 
         // Assert
         assertNotNull(response);
-        assertEquals("SKU-001", response.sku()); // Verifica formato mayúscula/trim
+        assertEquals("SKU-001", response.sku());
         assertEquals("Laptop", response.name());
         verify(productRepository, times(1)).existsBySku("sku-001");
         verify(productRepository, times(1)).save(any(Product.class));

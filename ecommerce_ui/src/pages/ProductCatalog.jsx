@@ -12,7 +12,6 @@ export default function ProductCatalog() {
   const [totalPages, setTotalPages] = useState(0);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  // Callback que recibe los resultados procesados desde ProductSearchBar
   const handleResultsFetched = ({ products, totalPages, number }) => {
     setProducts(products);
     setTotalPages(totalPages);
@@ -68,7 +67,7 @@ export default function ProductCatalog() {
       alert('Order successfully created! ID: ' + (response.data.id || 'Confirmed'));
       setCart([]);
       setCustomerEmail('');
-      setRefreshTrigger(prev => prev + 1); // Refresca el catálogo y stock actual
+      setRefreshTrigger(prev => prev + 1); 
     } catch (error) {
       console.error('Error processing checkout:', error);
       const errorMsg = error.response?.data?.message || error.message;

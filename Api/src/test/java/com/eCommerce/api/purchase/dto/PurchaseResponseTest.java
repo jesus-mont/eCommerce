@@ -41,7 +41,6 @@ class PurchaseResponseTest {
         assertEquals(items, response.items());
         assertEquals(now, response.createdAt());
 
-        // Verificar ItemResponse
         assertEquals(10L, itemResponse.productId());
         assertEquals("SKU-PROD", itemResponse.sku());
         assertEquals(2, itemResponse.quantity());

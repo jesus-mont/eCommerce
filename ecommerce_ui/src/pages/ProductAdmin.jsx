@@ -43,7 +43,6 @@ export default function ProductAdmin() {
   const [isEditing, setIsEditing] = useState(false);
   const [message, setMessage] = useState(null);
 
-  // Callback que recibe los resultados procesados desde ProductSearchBar
   const handleResultsFetched = ({ products, totalPages, number }) => {
     setProducts(products);
     setTotalPages(totalPages);
@@ -76,7 +75,7 @@ export default function ProductAdmin() {
         setMessage({ type: 'success', text: 'Product created successfully!' });
       }
       resetForm();
-      setRefreshTrigger(prev => prev + 1); // Fuerza a la barra a recargar la data
+      setRefreshTrigger(prev => prev + 1); 
     } catch (error) {
       const errorMsg = error.response?.data?.message || error.message;
       setMessage({ type: 'error', text: `Error: ${errorMsg}` });
@@ -94,7 +93,7 @@ export default function ProductAdmin() {
     try {
       await api.delete(`/products/${id}`);
       setMessage({ type: 'success', text: 'Product deleted successfully!' });
-      setRefreshTrigger(prev => prev + 1); // Fuerza a la barra a recargar la data
+      setRefreshTrigger(prev => prev + 1); 
     } catch (error) {
       setMessage({ type: 'error', text: 'Error deleting product' });
     }
@@ -124,7 +123,6 @@ export default function ProductAdmin() {
         </div>
       )}
 
-      {/* Formulario de Creación / Edición */}
       <form onSubmit={handleSubmit} style={{ background: '#f4f4f4', padding: '20px', borderRadius: '8px', marginBottom: '30px' }}>
         <h3>{isEditing ? 'Edit Product' : 'Create New Product'}</h3>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', marginBottom: '15px' }}>
@@ -135,7 +133,6 @@ export default function ProductAdmin() {
           <input type="number" name="stock" placeholder="Stock" value={formData.stock} onChange={handleChange} required style={{ padding: '8px' }} />
           <input type="number" step="0.01" name="weightKg" placeholder="Weight (kg)" value={formData.weightKg} onChange={handleChange} required style={{ padding: '8px' }} />
           
-          {/* Select integrado directamente a la cuadrícula con el mismo diseño */}
           <select
             name="category"
             value={formData.category || ''}
@@ -197,7 +194,6 @@ export default function ProductAdmin() {
             products.map((product) => (
               <tr key={product.id}>
                 <td style={{ padding: '10px', border: '1px solid #ddd' }}>
-                  {/* Al hacer clic en el nombre, ahora llama a handleEdit(product) para rellenar el formulario */}
                   <span 
                     onClick={() => handleEdit(product)} 
                     style={{ color: '#007bff', cursor: 'pointer', textDecoration: 'underline' }}
@@ -225,7 +221,6 @@ export default function ProductAdmin() {
         </tbody>
       </table>
 
-      {/* Componente de Paginación */}
       <Pagination 
         currentPage={currentPage} 
         totalPages={totalPages} 

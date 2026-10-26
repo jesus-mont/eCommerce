@@ -6,7 +6,6 @@ import api from '../services/api';
 
 jest.mock('../services/api');
 
-// Mock Pagination to allow direct testing of boundary cases in handlePageChange
 jest.mock('../components/Pagination', () => {
   return function MockPagination({ currentPage, totalPages, onPageChange }) {
     if (totalPages <= 1) return null;
@@ -151,7 +150,6 @@ describe('ProductCatalog Component', () => {
       expect(screen.getByText('Wireless Mouse')).toBeInTheDocument();
     });
 
-    // Click on product name to view details
     fireEvent.click(screen.getByText('Wireless Mouse'));
 
     expect(screen.getByText('Product Details: Wireless Mouse')).toBeInTheDocument();
@@ -161,7 +159,6 @@ describe('ProductCatalog Component', () => {
     expect(screen.getAllByText('$25.5')).toHaveLength(2);
     expect(screen.getByText(/0.2 kg/i)).toBeInTheDocument();
 
-    // Close details
     const closeBtn = screen.getByRole('button', { name: /Close/i });
     fireEvent.click(closeBtn);
 
@@ -207,21 +204,18 @@ describe('ProductCatalog Component', () => {
 
     const addButtons = screen.getAllByRole('button', { name: /Add to Cart/i });
 
-    // Add Wireless Mouse (price: 25.5) -> quantity 1
     fireEvent.click(addButtons[0]);
 
     expect(screen.queryByText('Your cart is empty.')).not.toBeInTheDocument();
     expect(screen.getByText('1 x $25.5')).toBeInTheDocument();
     expect(screen.getByText('Total: $25.50')).toBeInTheDocument();
 
-    // Add Mechanical Keyboard (price: 75) -> quantity 1
     fireEvent.click(addButtons[1]);
 
     expect(screen.getByText('1 x $75')).toBeInTheDocument();
     expect(screen.getByText('Total: $100.50')).toBeInTheDocument();
 
-    // Increment Wireless Mouse while keyboard is also in the cart
-    // This exercises the branch where map traverses other items (item.id !== product.id)
+    
     fireEvent.click(addButtons[0]);
 
     expect(screen.getByText('2 x $25.5')).toBeInTheDocument();
@@ -246,10 +240,9 @@ describe('ProductCatalog Component', () => {
 
     const addButtons = screen.getAllByRole('button', { name: /Add to Cart/i });
 
-    // Wireless Mouse stock is 2
-    fireEvent.click(addButtons[0]); // quantity: 1
-    fireEvent.click(addButtons[0]); // quantity: 2
-    fireEvent.click(addButtons[0]); // exceeds stock -> triggers alert
+    fireEvent.click(addButtons[0]); 
+    fireEvent.click(addButtons[0]);
+    fireEvent.click(addButtons[0]); 
 
     expect(alertSpy).toHaveBeenCalledWith('Cannot add more units. Stock limit reached.');
     expect(screen.getByText('2 x $25.5')).toBeInTheDocument();
@@ -272,20 +265,18 @@ describe('ProductCatalog Component', () => {
     });
 
     const addButtons = screen.getAllByRole('button', { name: /Add to Cart/i });
-    fireEvent.click(addButtons[0]); // Wireless Mouse
-    fireEvent.click(addButtons[1]); // Keyboard
+    fireEvent.click(addButtons[0]); 
+    fireEvent.click(addButtons[1]); 
 
     expect(screen.getByText('Total: $100.50')).toBeInTheDocument();
 
     const removeButtons = screen.getAllByRole('button', { name: /Remove/i });
-    // Remove first item
     fireEvent.click(removeButtons[0]);
 
     expect(screen.queryByText('1 x $25.5')).not.toBeInTheDocument();
     expect(screen.getByText('1 x $75')).toBeInTheDocument();
     expect(screen.getByText('Total: $75.00')).toBeInTheDocument();
 
-    // Remove remaining item
     const remainingRemoveButton = screen.getByRole('button', { name: /Remove/i });
     fireEvent.click(remainingRemoveButton);
 
@@ -501,17 +492,14 @@ describe('ProductCatalog Component', () => {
       expect(screen.getByText('Page 1 de 2')).toBeInTheDocument();
     });
 
-    // Test out of bounds: negative page index (ignored by handlePageChange)
     const invalidLowerBtn = screen.getByRole('button', { name: /Invalid Lower Bound/i });
     fireEvent.click(invalidLowerBtn);
-    expect(api.get).toHaveBeenCalledTimes(1); // No new request made
+    expect(api.get).toHaveBeenCalledTimes(1); 
 
-    // Test out of bounds: newPage >= totalPages (ignored by handlePageChange)
     const invalidUpperBtn = screen.getByRole('button', { name: /Invalid Upper Bound/i });
     fireEvent.click(invalidUpperBtn);
-    expect(api.get).toHaveBeenCalledTimes(1); // No new request made
+    expect(api.get).toHaveBeenCalledTimes(1); 
 
-    // Navigate to page 1
     api.get.mockResolvedValueOnce({
       data: {
         content: [mockProducts[1]],
@@ -529,7 +517,6 @@ describe('ProductCatalog Component', () => {
       expect(screen.getByText('Page 2 de 2')).toBeInTheDocument();
     });
 
-    // Navigate back to page 0
     api.get.mockResolvedValueOnce({
       data: {
         content: [mockProducts[0]],

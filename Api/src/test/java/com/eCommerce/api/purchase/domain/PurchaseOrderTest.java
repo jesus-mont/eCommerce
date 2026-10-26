@@ -66,7 +66,7 @@ class PurchaseOrderTest {
         assertEquals(customerEmail, order.getCustomerEmail());
         assertEquals(status, order.getStatus());
         assertEquals(totalAmount, order.getTotalAmount());
-        assertNotNull(order.getItems()); // Verifica que @Builder.Default inicialice la lista vacía
+        assertNotNull(order.getItems());
         assertTrue(order.getItems().isEmpty());
     }
 
@@ -77,7 +77,6 @@ class PurchaseOrderTest {
         PurchaseOrder order = new PurchaseOrder();
         order.setCustomerEmail("persist@example.com");
         order.setTotalAmount(BigDecimal.valueOf(150.00));
-        // Status y fechas vienen nulos antes de persistir
 
         // Act
         order.onCreate();
@@ -96,7 +95,6 @@ class PurchaseOrderTest {
         order.onCreate();
         OffsetDateTime initialUpdatedAt = order.getUpdatedAt();
 
-        // Pequeña pausa para asegurar diferencia en milisegundos si el sistema es muy rápido
         Thread.sleep(10);
 
         // Act

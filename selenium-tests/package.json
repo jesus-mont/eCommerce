@@ -1,0 +1,22 @@
+{
+  "name": "selenium-tests",
+  "version": "1.0.0",
+  "description": "End-to-end automation test suite for E-Commerce platform using Selenium WebDriver",
+  "main": "run-tests.js",
+  "scripts": {
+    "test": "node run-tests.js",
+    "test:headed": "HEADLESS=false node run-tests.js"
+  },
+  "keywords": [
+    "selenium",
+    "e2e",
+    "testing",
+    "automation",
+    "ecommerce"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "selenium-webdriver": "^4.27.0"
+  }
+}
