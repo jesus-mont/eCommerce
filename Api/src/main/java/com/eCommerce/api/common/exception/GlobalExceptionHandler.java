@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.data.mapping.PropertyReferenceException;
 import com.eCommerce.api.common.exception.InsufficientStockException;
 
@@ -17,9 +18,12 @@ import java.time.OffsetDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+    private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidationExceptions(
@@ -88,11 +92,17 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.BAD_REQUEST, "Unsupported sort field: " + ex.getPropertyName(), request);
     }
 
-    @ExceptionHandler({InsufficientStockException.class, DataIntegrityViolationException.class})
+    @ExceptionHandler({InsufficientStockException.class, DataIntegrityViolationException.class,
+            ObjectOptimisticLockingFailureException.class})
     public ResponseEntity<ErrorResponse> handleConflict(Exception ex, HttpServletRequest request) {
-        String message = ex instanceof DataIntegrityViolationException
-                ? "The request conflicts with existing data"
-                : ex.getMessage();
+        String message;
+        if (ex instanceof DataIntegrityViolationException) {
+            message = "The request conflicts with existing data";
+        } else if (ex instanceof ObjectOptimisticLockingFailureException) {
+            message = "The resource changed while processing the request; retry it";
+        } else {
+            message = ex.getMessage();
+        }
         return error(HttpStatus.CONFLICT, message, request);
     }
 
@@ -107,6 +117,8 @@ public class GlobalExceptionHandler {
                 .message("An unexpected error occurred")
                 .path(request.getRequestURI())
                 .build();
+
+        logger.error("Unhandled request failure for {}", request.getRequestURI(), ex);
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
     }

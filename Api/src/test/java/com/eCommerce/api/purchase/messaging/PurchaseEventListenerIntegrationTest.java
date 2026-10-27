@@ -21,7 +21,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-class PurchaseEventListenerTest {
+class PurchaseEventListenerIntegrationTest {
 
     @Mock
     private PurchaseOrderRepository purchaseOrderRepository;
