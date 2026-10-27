@@ -14,7 +14,7 @@ selenium-tests/
 │   └── testConfig.js           # Environment configurations (ports, timeouts, headless flag)
 ├── utils/
 │   ├── driverFactory.js        # Selenium WebDriver builder with optimized ChromeOptions
-│   ├── mockApiServer.js        # Built-in mock Spring Boot REST API for standalone execution
+│   ├── mockApiServer.js        # Built-in Node.js mock API for standalone execution
 │   └── appServer.js            # Built-in HTTP static server for React production build
 ├── pages/
 │   ├── BasePage.js             # Common browser actions, explicit waits & alert handlers
@@ -53,9 +53,13 @@ selenium-tests/
 - **Google Chrome** (Selenium Manager automatically manages the matching ChromeDriver)
 
 ### Installation
-From the root directory:
+Build the frontend first so the runner can serve its static files when no UI is already running. From the repository root:
 ```bash
-cd selenium-tests
+cd ecommerce_ui
+npm install
+npm run build
+
+cd ../selenium-tests
 npm install
 ```
 
@@ -74,7 +78,7 @@ npm run test:headed
 
 ## ⚙️ Environment Variables
 
-The suite automatically discovers running services on ports `3000` (UI) and `8080` (API). If they are not running, it automatically spins up built-in mock services so tests can execute standalone without external dependencies.
+The runner checks ports `3000` (UI) and `8080` (API). If a service is already listening, it reuses it; otherwise, it serves the frontend build and starts a built-in Node.js mock API. The tests expect the mock API fixture data, so stop other services on those ports before running the suite. A frontend build is required when the runner needs to start its own UI server.
 
 | Variable | Default | Description |
 | :--- | :--- | :--- |

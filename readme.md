@@ -7,7 +7,7 @@ A small e-commerce application with a Java 21 / Spring Boot API, React UI, Postg
 - Product create, read, update, and soft delete. Deleted products remain in the database and their SKU remains reserved.
 - Product search across name, SKU, description, and category. Search is case- and accent-insensitive, supports multiple terms, and uses PostgreSQL trigram similarity and GIN indexes.
 - Checkout reserves stock with a conditional SQL update. Payment is simulated asynchronously; an email containing `fail` causes payment failure and the reserved stock is restored.
-- A bundled CSV (`Api/src/main/resources/products.csv`) seeds the database at startup only when the products table is empty. Invalid rows are skipped and reported to application stderr. Duplicate SKUs are skipped. Unknown categories currently become `MISC`.
+- A bundled CSV (`Api/src/main/resources/products.csv`) seeds the database at startup only when the products table is empty. Invalid rows are generally skipped and reported to application stderr. Duplicate SKUs are skipped. Unknown categories currently become `MISC`. The importer strips non-numeric characters from price and weight, including minus signs, so negative input can be imported as a positive value.
 - Product create, update, and delete API routes require HTTP Basic admin credentials. Reads, search, and purchases are public in this demo.
 
 CSV import is not exposed as an upload API or UI. The import requirement is therefore only partially implemented: the supplied CSV is used as startup seed data.
@@ -45,7 +45,7 @@ In one terminal, start the API (default local DB and broker settings are in `Api
 
 ```bash
 cd Api
-./mvnw spring-boot:run
+bash ./mvnw spring-boot:run
 ```
 
 In another terminal, start the UI. Set the admin credentials to match the API account if you changed its defaults:
@@ -56,18 +56,18 @@ REACT_APP_ADMIN_USERNAME=admin REACT_APP_ADMIN_PASSWORD=ecommerceApp npm install
 REACT_APP_ADMIN_USERNAME=admin REACT_APP_ADMIN_PASSWORD=ecommerceApp npm start
 ```
 
-On Windows, use `mvnw.cmd` in place of `./mvnw`. The UI expects the API at `http://localhost:8080/api`.
+On Windows, run `mvnw.cmd spring-boot:run` from the `Api` directory. The UI expects the API at `http://localhost:8080/api`.
 
 ## Tests
 
-Backend unit and integration tests:
+Backend unit and controller tests:
 
 ```bash
 cd Api
-./mvnw test
+bash ./mvnw test
 ```
 
-The backend test dependencies include Testcontainers. Tests that use containers require Docker to be available.
+The backend suite contains JUnit, Mockito, and Spring MVC tests. Testcontainers dependencies are present in the Maven configuration, but the current tests do not use them; there is no real PostgreSQL/RabbitMQ integration or concurrency test coverage. On Windows, run `mvnw.cmd test` instead.
 
 Frontend tests (Jest / React Testing Library):
 
@@ -89,6 +89,7 @@ npm test
 ```
 
 The Selenium suite uses Chrome and Selenium Manager. See [selenium-tests/README.md](selenium-tests/README.md) for environment settings and headed mode.
+The runner uses any services already listening on ports 3000 and 8080; otherwise, it starts a static server from `ecommerce_ui/build` and its Node mock API. The tests expect the mock fixture data, so stop other services on those ports before running the suite.
 
 ## Design choices and trade-offs
 
@@ -119,7 +120,7 @@ OpenCSV reads the bundled sample at startup and saves valid rows individually. D
 - There are no user accounts or customer authentication. Admin product writes use one shared HTTP Basic account, and its frontend credentials are visible in the built bundle.
 - CSV upload and its row-level results are not implemented.
 - The frontend uses Create React App (`react-scripts`) and plain JavaScript/JSX. The API URL is currently fixed to `http://localhost:8080/api`.
-- Automated tests include unit and component coverage, but mocked tests do not prove PostgreSQL concurrency or broker failure behavior. The Selenium suite is separate and requires Chrome.
+- Automated tests include backend unit/controller tests, frontend component tests, and Selenium browser flows. The Selenium suite uses a mock API when it can start one; it is not a live-stack integration suite. There is no real PostgreSQL concurrency or RabbitMQ failure test coverage.
 - The API Docker build skips tests (`mvn clean package -DskipTests`); run the test commands above separately.
 
 ## Sample CSV provenance
