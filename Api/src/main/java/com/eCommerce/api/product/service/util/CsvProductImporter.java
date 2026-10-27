@@ -4,10 +4,8 @@ import com.eCommerce.api.product.domain.Product;
 import com.eCommerce.api.product.domain.ProductCategory;
 import com.eCommerce.api.product.repository.ProductRepository;
 import com.opencsv.CSVReader;
-import com.opencsv.exceptions.CsvValidationException;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 
 import java.io.InputStreamReader;
@@ -81,7 +79,7 @@ public class CsvProductImporter {
                     }
 
                     BigDecimal weightKg = new BigDecimal(sanitizedWeight);
-                    if (weightKg.compareTo(BigDecimal.ZERO) <0) {
+                    if (weightKg.compareTo(BigDecimal.ZERO) <=0) {
                         throw new IllegalArgumentException("Weight must be greater than zero");
                     }
 
