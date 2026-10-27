@@ -7,10 +7,16 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.mapping.PropertyReferenceException;
+import com.eCommerce.api.common.exception.InsufficientStockException;
 
 import java.time.OffsetDateTime;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -23,12 +29,15 @@ public class GlobalExceptionHandler {
         for (FieldError error : ex.getBindingResult().getFieldErrors()) {
             errors.put(error.getField(), error.getDefaultMessage());
         }
+        String errorMessage = errors.entrySet().stream()
+                .map(entry -> entry.getKey() + ": " + entry.getValue())
+                .collect(Collectors.joining(", "));
 
         ErrorResponse errorResponse = ErrorResponse.builder()
                 .timestamp(OffsetDateTime.now())
                 .status(HttpStatus.BAD_REQUEST.value())
                 .error(HttpStatus.BAD_REQUEST.getReasonPhrase())
-                .message("Validation failed for one or more fields")
+                .message(errorMessage)
                 .path(request.getRequestURI())
                 .validationErrors(errors)
                 .build();
@@ -66,6 +75,27 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
     }
 
+    @ExceptionHandler({IllegalArgumentException.class, HttpMessageNotReadableException.class, MethodArgumentTypeMismatchException.class})
+    public ResponseEntity<ErrorResponse> handleBadRequest(Exception ex, HttpServletRequest request) {
+        String message = ex instanceof HttpMessageNotReadableException
+                ? "Request body contains invalid or unreadable values"
+                : ex.getMessage();
+        return error(HttpStatus.BAD_REQUEST, message, request);
+    }
+
+    @ExceptionHandler(PropertyReferenceException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidSort(PropertyReferenceException ex, HttpServletRequest request) {
+        return error(HttpStatus.BAD_REQUEST, "Unsupported sort field: " + ex.getPropertyName(), request);
+    }
+
+    @ExceptionHandler({InsufficientStockException.class, DataIntegrityViolationException.class})
+    public ResponseEntity<ErrorResponse> handleConflict(Exception ex, HttpServletRequest request) {
+        String message = ex instanceof DataIntegrityViolationException
+                ? "The request conflicts with existing data"
+                : ex.getMessage();
+        return error(HttpStatus.CONFLICT, message, request);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGlobalException(
             Exception ex, HttpServletRequest request) {
@@ -74,10 +104,21 @@ public class GlobalExceptionHandler {
                 .timestamp(OffsetDateTime.now())
                 .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
                 .error(HttpStatus.INTERNAL_SERVER_ERROR.getReasonPhrase())
-                .message("An unexpected error occurred: " + ex.getMessage())
+                .message("An unexpected error occurred")
                 .path(request.getRequestURI())
                 .build();
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+    }
+
+    private ResponseEntity<ErrorResponse> error(HttpStatus status, String message, HttpServletRequest request) {
+        ErrorResponse response = ErrorResponse.builder()
+                .timestamp(OffsetDateTime.now())
+                .status(status.value())
+                .error(status.getReasonPhrase())
+                .message(message)
+                .path(request.getRequestURI())
+                .build();
+        return ResponseEntity.status(status).body(response);
     }
 }

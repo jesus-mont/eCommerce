@@ -49,7 +49,7 @@ class GlobalExceptionHandlerTest {
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         assertNotNull(response.getBody());
         assertEquals(400, response.getBody().getStatus());
-        assertEquals("Validation failed for one or more fields", response.getBody().getMessage());
+        assertEquals("field: must not be blank", response.getBody().getMessage());
         assertEquals("/api/test", response.getBody().getPath());
         assertTrue(response.getBody().getValidationErrors().containsKey("field"));
     }
@@ -95,7 +95,7 @@ class GlobalExceptionHandlerTest {
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
         assertNotNull(response.getBody());
         assertEquals(500, response.getBody().getStatus());
-        assertEquals("An unexpected error occurred: Unexpected error", response.getBody().getMessage());
+        assertEquals("An unexpected error occurred", response.getBody().getMessage());
         assertEquals("/api/test", response.getBody().getPath());
     }
 }
