@@ -1,128 +1,127 @@
-# Enterprise E-Commerce Platform
+# E-Commerce Challenge
 
-A modular e-commerce demo built using **Java (Spring Boot)**, **React**, **PostgreSQL**, **Flyway**, and **RabbitMQ**. It demonstrates catalog management, indexed search, atomic inventory reservation, and simulated asynchronous checkout.
+A small e-commerce application with a Java 21 / Spring Boot API, React UI, PostgreSQL database, and RabbitMQ message broker. It supports product management, catalog search, a bundled CSV startup seed, and checkout with simulated asynchronous payment.
 
----
-## 📌 Project Overview
+## Features
 
-The repository contains product CRUD, catalog search, a bundled CSV startup seed, and a simulated payment flow. Product writes require HTTP Basic admin credentials. It is a challenge implementation, not a production deployment: user accounts, real payment integration, user-uploaded CSV files, and operational monitoring are not included.
+- Product create, read, update, and soft delete. Deleted products remain in the database and their SKU remains reserved.
+- Product search across name, SKU, description, and category. Search is case- and accent-insensitive, supports multiple terms, and uses PostgreSQL trigram similarity and GIN indexes.
+- Checkout reserves stock with a conditional SQL update. Payment is simulated asynchronously; an email containing `fail` causes payment failure and the reserved stock is restored.
+- A bundled CSV (`Api/src/main/resources/products.csv`) seeds the database at startup only when the products table is empty. Invalid rows are skipped and reported to application stderr. Duplicate SKUs are skipped. Unknown categories currently become `MISC`.
+- Product create, update, and delete API routes require HTTP Basic admin credentials. Reads, search, and purchases are public in this demo.
 
-### 🌐 Accessing the Services
-
-Once the containers are successfully running, you can access the various components at the following endpoints:
-
-| Service | Access URL / Port | Description |
-| :--- | :--- | :--- |
-| **Frontend Application** | `http://localhost:3000` | React Web UI |
-| **Backend API** | `http://localhost:8080` | Spring Boot REST Endpoints |
-| **RabbitMQ Management** | `http://localhost:15672` | Message Broker Dashboard (Default guest/guest credentials) |
-| **PostgreSQL Database** | `localhost:5432` | Relational Store (Creds defined in `docker-compose.yml`) |
+CSV import is not exposed as an upload API or UI. The import requirement is therefore only partially implemented: the supplied CSV is used as startup seed data.
 
 
-## 🐳 Running with Docker Compose
-You can spin up the entire stack (React Frontend, Spring Boot Backend, PostgreSQL Database, and RabbitMQ Message Broker) with a single command using Docker Compose.
+## Run with Docker Compose
 
-Prerequisites
-Docker and Docker Compose installed on your machine.
+Prerequisites: Docker with the Compose plugin.
 
-Quick Start Instructions
-Clone the repository:
+From the repository root:
 
-git clone <repository-url>
-cd eComerce
-
-Start the application containers:
-Run the following command from the root directory containing the docker-compose.yml file:
+```bash
 docker compose up --build
+```
 
-Product create, update, and delete endpoints use HTTP Basic authentication. Local defaults are `admin` / `ecommerceApp`; set `APP_SECURITY_ADMIN_USERNAME` and `APP_SECURITY_ADMIN_PASSWORD` before starting Compose to override them. Change these values outside a local demo.
+Open the UI at `http://localhost:3000`. The API is at `http://localhost:8080`; RabbitMQ management is at `http://localhost:15672` (default `guest` / `guest`). PostgreSQL listens on port `5432`.
 
-The React API client sends those credentials only for product create, update, and delete requests. In Compose, the frontend receives the same values as build arguments. For local `npm start`, set `REACT_APP_ADMIN_USERNAME` and `REACT_APP_ADMIN_PASSWORD` to match the API account. These build-time credentials are visible to anyone who can access the frontend bundle, so this shared-account approach is intended for the local challenge demo only.
+The local demo admin credentials default to `admin` / `ecommerceApp`. Override them before building and starting Compose:
 
-Stop the containers:
-To stop the running services, press Ctrl + C in your terminal, or run:
-docker compose down
+```bash
+APP_SECURITY_ADMIN_USERNAME=my-admin APP_SECURITY_ADMIN_PASSWORD=my-password docker compose up --build
+```
 
+The frontend receives these credentials at build time, so they are included in its static bundle and are not suitable for production. To stop the stack, run `docker compose down`. Product data persists in the Compose volume; `docker compose down -v` also removes that data.
 
-### Sample Data Details
-* **Example CSV File:** `Code Challenge E-Commerce` renamed to `products.csv`
-* **CSV Download Date:** October 22, 2026 (confirm this date against the original download record before relying on it).
-* The CSV is loaded from the classpath once when the product table is empty. Invalid rows are skipped and reported to application stderr; unknown categories fall back to `MISC`. There is no CSV upload endpoint or import summary in the UI.
+## Run locally without the app containers
 
----
+Prerequisites: Java 21, Node.js 18+, npm, and Docker. Start PostgreSQL and RabbitMQ from the repository root:
 
-## 🏗️ Architectural Decisions & Design Approach
+```bash
+docker compose up -d postgres rabbitmq
+```
 
+In one terminal, start the API (default local DB and broker settings are in `Api/src/main/resources/application.properties`):
 
-               ┌───────────────────────────────────────────┐
-               │          React + TypeScript UI            │
-               └─────────────────────┬─────────────────────┘
-                                     │ REST API
-                                     ▼
-               ┌───────────────────────────────────────────┐
-               │       Spring Boot Modular Monolith        │
-               │   (Catalog, Search, Orders, CSV Import)   │
-               └──────────────┬──────────────────┬─────────┘
-                              │                  │
-                              ▼                  ▼
-                    ┌───────────────────┐  ┌───────────┐
-                    │    PostgreSQL     │  │ RabbitMQ  │
-                    │ (Flyway + Outbox) │  │  (Queue)  │
-                    └───────────────────┘  └───────────┘
+```bash
+cd Api
+./mvnw spring-boot:run
+```
 
-### 1. Relational Data Store & Schema Migrations
-* **Choice:** PostgreSQL + Flyway
-* **Rationale:** Relational data consistency (`ACID`) is non-negotiable for e-commerce inventory and transactional orders. Flyway executes version-controlled SQL migration scripts (`db/migration/V1__*.sql`) on application startup, guaranteeing exact database schema reproducibility and seamless initialization across fresh Docker environments.
-* **Schema note:** Order items reference their purchase order with a foreign key. Product IDs and SKUs on order items are snapshots without a product foreign key so past orders can remain readable independently of catalog lifecycle.
+In another terminal, start the UI. Set the admin credentials to match the API account if you changed its defaults:
 
-### 2. Concurrency Control & Stock Management
-* **Choice:** PostgreSQL Atomic Conditional SQL Updates inside ACID Transactions
-* **Rationale:** Stock deduction uses a conditional database update (`stock >= quantity`) inside the order transaction. PostgreSQL row locks serialize competing updates, and failure to reserve stock aborts order creation. The atomic update is intentionally used instead of an in-memory check, which cannot protect concurrent requests.
-* **Alternative Considered:** Redis Pre-Reservations. Intentionally omitted. While Redis provides fast in-memory atomic operations, it introduces cross-system dual-write risks: if an application crashes or database write fails after a Redis deduction, the two systems fall out of sync, requiring complex reservation expirations, compensations, and background reconciliation loops.
+```bash
+cd ecommerce_ui
+REACT_APP_ADMIN_USERNAME=admin REACT_APP_ADMIN_PASSWORD=ecommerceApp npm install
+REACT_APP_ADMIN_USERNAME=admin REACT_APP_ADMIN_PASSWORD=ecommerceApp npm start
+```
 
-### 3. Asynchronous Non-Blocking Payment Processing
-- **Choice:** RabbitMQ Message Queue + Transactional Outbox Pattern
-- **Rationale:** The API saves the order, reserves stock, and stores an outbox event in one PostgreSQL transaction. A scheduled relay publishes pending events; failed sends remain eligible for retry. Payment is simulated by the consumer. Delivery is at least once, so consumers must remain idempotent. Current order status checks prevent most duplicate processing; monitor and test crash/retry boundaries before production use.
-- **Alternative Considered:** Synchronous HTTP payment execution within the REST handler. Rejected because third-party payment gateway latency directly degrades API throughput and client response times.
+On Windows, use `mvnw.cmd` in place of `./mvnw`. The UI expects the API at `http://localhost:8080/api`.
 
-### 4. Search & Indexing Strategy
-* **Choice:** PostgreSQL `pg_trgm` GIN indexes with `unaccent`
-* **Rationale:** Search uses case- and accent-insensitive substring matching across name, SKU, description, and category, then ranks matches by trigram similarity. GIN expression indexes are installed by Flyway. Search terms are escaped so `%` and `_` are treated literally. This does not implement multi-word relevance tuning or a dedicated search service.
-* **Alternative Considered:** Elasticsearch. Elasticsearch offers robust search, but adding a dedicated search cluster for a single-service architecture introduces unnecessary operational complexity and resource overhead.
+## Tests
 
-### 5. Efficient Bulk CSV Import
-* **Choice:** OpenCSV streaming reader for the bundled seed
-* **Rationale:** A simple startup seed is sufficient for the supplied example dataset. Rows are validated while reading and saved individually; this is not a high-volume upload pipeline. A future upload feature should return row-level errors and use bounded JDBC batching.
+Backend unit and integration tests:
 
----
+```bash
+cd Api
+./mvnw test
+```
 
-## 🧪 Testing Strategy
+The backend test dependencies include Testcontainers. Tests that use containers require Docker to be available.
 
-The platform implements a comprehensive, multi-layered testing strategy to guarantee code quality, transactional safety across distributed boundaries, and a seamless user experience from end to end.
+Frontend tests (Jest / React Testing Library):
 
-### 1. Frontend Component Testing
-- **Tools:** Jest & React Testing Library
-- **Scope:** Validates individual React components, local state management, form inputs, and user interactions in isolation. It ensures that UI components render correctly and handle user events robustly before integration.
+```bash
+cd ecommerce_ui
+npm install
+npm test -- --watchAll=false
+```
 
-### 2. Backend Unit Testing
-- **Tools:** JUnit 5 & Mockito
-- **Scope:** Focuses on business logic services, domain components, and event listeners (such as the asynchronous `PurchaseEventListener`). Collaborators and repositories are mocked to test edge cases, conditional flows (like payment success/failure paths), and error handling deterministically and rapidly.
+Selenium browser tests:
 
-### 3. Integration & Concurrency Testing
-- **Tools:** Spring Boot Test, Testcontainers dependencies, and RabbitMQ integration tests
-- **Scope:** Existing integration coverage exercises purchase messaging. PostgreSQL concurrency and migration integration coverage still needs to be added; unit tests alone do not prove atomic stock behavior under concurrent requests.
+```bash
+cd ecommerce_ui
+npm install
+npm run build
+cd ../selenium-tests
+npm install
+npm test
+```
 
-### 4. End-to-End (E2E) Acceptance Testing
-- **Tools:** Selenium
-- **Scope:** Selenium tests cover navigation, catalog, product administration, purchase history, and a checkout journey using local/mock services. Authentication-specific browser coverage is not currently present.
+The Selenium suite uses Chrome and Selenium Manager. See [selenium-tests/README.md](selenium-tests/README.md) for environment settings and headed mode.
 
-## 🛠️ Tech Stack
+## Design choices and trade-offs
 
-| Layer | Technology | Key Libraries / Modules |
-| :--- | :--- | :--- |
-| **Frontend** | React, TypeScript | Axios, React Router, Tailwind CSS |
-| **Backend API** | Java 17+, Spring Boot 3.x | Spring Data JPA, Spring AMQP, Jakarta Validation |
-| **Database** | PostgreSQL 16 | Flyway Migration (`db/migration`), `pg_trgm` |
-| **Message Broker** | RabbitMQ 3 | AMQP Protocol + Management Console (Port 15672) |
-| **Testing** | JUnit 5, Testcontainers | Real PostgreSQL Integration & Concurrency Tests |
-| **Containerization** | Docker, Docker Compose | Multi-stage Dockerfiles |
+### PostgreSQL and migrations
+
+PostgreSQL stores products, orders, order items, and outbox events. Flyway migrations define the schema, constraints, and search indexes. PostgreSQL was chosen for relational consistency and transactional inventory/order updates; a document database was an alternative, but would add work to maintain those relationships and consistency rules.
+
+### Product lifecycle and stock
+
+Deleting a product sets `is_active` to false. Inactive products are omitted from catalog reads, while the unique SKU constraint means a deleted SKU cannot be reused. This preserves old order references and avoids silently creating a second product identity.
+
+Checkout reserves inventory with `UPDATE ... WHERE stock >= quantity` in the order transaction. If any item cannot be reserved, the transaction fails rather than recording a partially reserved order. This database-side conditional update was chosen over a read-then-save stock change, which is vulnerable to concurrent requests.
+
+### Search
+
+Search uses PostgreSQL `unaccent` and `pg_trgm`, with GIN expression indexes on product name, description, SKU, and category. The query matches each non-empty search term against these fields and ranks results by name/SKU similarity. Elasticsearch was considered but would add a separate service and operational cost for this small application.
+
+### Payment events
+
+The API writes the order, stock reservation, and an outbox event in one database transaction. A scheduled publisher sends unpublished events to RabbitMQ and retries events it cannot publish. The listener processes only orders still in `PENDING`, marks payment `COMPLETED` or `FAILED`, and restores stock on failure. Payment is a simulation, not a real provider integration. The outbox addresses the database/message-broker dual-write gap, though delivery and crash-retry behavior still warrant real-broker integration testing before production use.
+
+### CSV policy
+
+OpenCSV reads the bundled sample at startup and saves valid rows individually. Duplicate SKUs are skipped; invalid rows are logged. This is adequate for the supplied seed file, not a high-volume import pipeline. A user-upload flow with a row-by-row import report is a known missing feature.
+
+## Known limitations
+
+- There are no user accounts or customer authentication. Admin product writes use one shared HTTP Basic account, and its frontend credentials are visible in the built bundle.
+- CSV upload and its row-level results are not implemented.
+- The frontend uses Create React App (`react-scripts`) and plain JavaScript/JSX. The API URL is currently fixed to `http://localhost:8080/api`.
+- Automated tests include unit and component coverage, but mocked tests do not prove PostgreSQL concurrency or broker failure behavior. The Selenium suite is separate and requires Chrome.
+- The API Docker build skips tests (`mvn clean package -DskipTests`); run the test commands above separately.
+
+## Sample CSV provenance
+
+The challenge's `Code Challenge E-Commerce` example is stored as `Api/src/main/resources/products.csv`. The recorded download date is October 22, 2026; verify it against the original download record if precise provenance is required.

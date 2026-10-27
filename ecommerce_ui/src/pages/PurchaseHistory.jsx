@@ -10,10 +10,6 @@ export default function PurchaseHistory() {
   const [totalPages, setTotalPages] = useState(0);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    fetchPurchases();
-  }, []);
-
   const fetchPurchases = async (page = 0) => {
     setLoading(true);
     try {
@@ -63,6 +59,14 @@ export default function PurchaseHistory() {
       
       <div style={{ flex: 2 }}>
         <h2>Purchase History</h2>
+        <button
+          type="button"
+          onClick={() => fetchPurchases(currentPage)}
+          disabled={loading}
+          style={{ marginBottom: '12px', padding: '7px 12px', cursor: loading ? 'wait' : 'pointer' }}
+        >
+          {loading ? 'Refreshing...' : 'Refresh'}
+        </button>
 
         <table style={{ width: '100%', borderCollapse: 'collapse', background: '#fff' }}>
           <thead>
@@ -70,6 +74,7 @@ export default function PurchaseHistory() {
               <th style={{ padding: '10px', border: '1px solid #ddd' }}>ID</th>
               <th style={{ padding: '10px', border: '1px solid #ddd' }}>Customer Email</th>
               <th style={{ padding: '10px', border: '1px solid #ddd' }}>Total Amount</th>
+              <th style={{ padding: '10px', border: '1px solid #ddd' }}>Status</th>
               <th style={{ padding: '10px', border: '1px solid #ddd' }}>Actions</th>
             </tr>
           </thead>
@@ -80,6 +85,7 @@ export default function PurchaseHistory() {
                   <td style={{ padding: '10px', border: '1px solid #ddd' }}>{purchase.id}</td>
                   <td style={{ padding: '10px', border: '1px solid #ddd' }}>{purchase.customerEmail}</td>
                   <td style={{ padding: '10px', border: '1px solid #ddd' }}>${purchase.totalAmount}</td>
+                  <td style={{ padding: '10px', border: '1px solid #ddd' }}>{purchase.status || 'PENDING'}</td>
                   <td style={{ padding: '10px', border: '1px solid #ddd' }}>
                     <button 
                       onClick={() => fetchPurchaseDetail(purchase.id)}
@@ -92,7 +98,7 @@ export default function PurchaseHistory() {
               ))
             ) : (
               <tr>
-                <td colSpan="4" style={{ padding: '15px', textAlign: 'center', border: '1px solid #ddd' }}>
+                <td colSpan="5" style={{ padding: '15px', textAlign: 'center', border: '1px solid #ddd' }}>
                   No purchases found.
                 </td>
               </tr>

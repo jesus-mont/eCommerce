@@ -128,7 +128,7 @@ export default function ProductAdmin() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', marginBottom: '15px' }}>
           
           <input type="text" name="name" placeholder="Name" value={formData.name} onChange={handleChange} required style={{ padding: '8px' }} />
-          <input type="text" name="sku" placeholder="SKU" value={formData.sku} onChange={handleChange} required style={{ padding: '8px' }} />
+          <input type="text" name="sku" placeholder="SKU" value={formData.sku} onChange={handleChange} required readOnly={isEditing} title={isEditing ? 'SKU cannot be changed after creation' : undefined} style={{ padding: '8px', background: isEditing ? '#e9ecef' : '#fff' }} />
           <input type="number" step="0.01" name="price" placeholder="Price ($)" value={formData.price} onChange={handleChange} required style={{ padding: '8px' }} />
           <input type="number" name="stock" placeholder="Stock" value={formData.stock} onChange={handleChange} required style={{ padding: '8px' }} />
           <input type="number" step="0.01" name="weightKg" placeholder="Weight (kg)" value={formData.weightKg} onChange={handleChange} required style={{ padding: '8px' }} />

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import api from '../services/api';
 import ProductSearchBar from '../components/ProductSearchBar';
 import Pagination from '../components/Pagination';
+import categoryLabel from '../utils/categoryLabel';
 
 export default function ProductCatalog() {
   const [products, setProducts] = useState([]);
@@ -44,6 +45,14 @@ export default function ProductCatalog() {
 
   const removeFromCart = (productId) => {
     setCart((prevCart) => prevCart.filter((item) => item.id !== productId));
+  };
+
+  const decreaseCartQuantity = (productId) => {
+    setCart((prevCart) => prevCart.flatMap((item) => {
+      if (item.id !== productId) return [item];
+      if (item.quantity === 1) return [];
+      return [{ ...item, quantity: item.quantity - 1 }];
+    }));
   };
 
   const handleCheckout = async () => {
@@ -101,7 +110,7 @@ export default function ProductCatalog() {
               </button>
             </div>
             <p><strong>SKU:</strong> {selectedProduct.sku}</p>
-            <p><strong>Category:</strong> {selectedProduct.category || 'N/A'}</p>
+            <p><strong>Category:</strong> {categoryLabel(selectedProduct.category)}</p>
             <p><strong>Description:</strong> {selectedProduct.description || 'No description available.'}</p>
             <p><strong>Price:</strong> ${selectedProduct.price}</p>
             <p><strong>Stock Available:</strong> {selectedProduct.stock}</p>
@@ -184,12 +193,28 @@ export default function ProductCatalog() {
                     <br />
                     <small>{item.quantity} x ${item.price}</small>
                   </div>
-                  <button 
-                    onClick={() => removeFromCart(item.id)}
-                    style={{ background: '#dc3545', color: '#fff', border: 'none', padding: '4px 8px', borderRadius: '3px', cursor: 'pointer', fontSize: '12px' }}
-                  >
-                    Remove
-                  </button>
+                  <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
+                    <button
+                      type="button"
+                      aria-label={`Decrease quantity of ${item.name}`}
+                      onClick={() => decreaseCartQuantity(item.id)}
+                      style={{ padding: '4px 9px', cursor: 'pointer' }}
+                    >−</button>
+                    <button
+                      type="button"
+                      aria-label={`Increase quantity of ${item.name}`}
+                      onClick={() => addToCart(item)}
+                      disabled={item.quantity >= item.stock}
+                      style={{ padding: '4px 9px', cursor: item.quantity >= item.stock ? 'not-allowed' : 'pointer' }}
+                    >+</button>
+                    <button
+                      type="button"
+                      onClick={() => removeFromCart(item.id)}
+                      style={{ background: '#dc3545', color: '#fff', border: 'none', padding: '4px 8px', borderRadius: '3px', cursor: 'pointer', fontSize: '12px' }}
+                    >
+                      Remove
+                    </button>
+                  </div>
                 </li>
               ))}
             </ul>
