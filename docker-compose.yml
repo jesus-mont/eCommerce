@@ -45,6 +45,8 @@ services:
       SPRING_RABBITMQ_PORT: 5672
       SPRING_RABBITMQ_USERNAME: guest
       SPRING_RABBITMQ_PASSWORD: guest
+      APP_SECURITY_ADMIN_USERNAME: ${APP_SECURITY_ADMIN_USERNAME:-admin}
+      APP_SECURITY_ADMIN_PASSWORD: ${APP_SECURITY_ADMIN_PASSWORD:-ecommerce}
     depends_on:
       postgres:
         condition: service_healthy
@@ -55,6 +57,9 @@ services:
     build:
       context: ./ecommerce_ui
       dockerfile: Dockerfile
+      args:
+        REACT_APP_ADMIN_USERNAME: ${APP_SECURITY_ADMIN_USERNAME:-admin}
+        REACT_APP_ADMIN_PASSWORD: ${APP_SECURITY_ADMIN_PASSWORD:-ecommerceApp}
     container_name: ecommerce-ui
     ports:
       - "3000:80"
