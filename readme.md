@@ -1,11 +1,11 @@
 # Enterprise E-Commerce Platform
 
-A production-ready, modular monolith e-commerce application built using **Java (Spring Boot)**, **React**, **PostgreSQL**, **Flyway**, and **RabbitMQ**, designed for transactional correctness, concurrency safety, and operational simplicity.
+A modular e-commerce demo built using **Java (Spring Boot)**, **React**, **PostgreSQL**, **Flyway**, and **RabbitMQ**. It demonstrates catalog management, indexed search, atomic inventory reservation, and simulated asynchronous checkout.
 
 ---
 ## 📌 Project Overview
 
-This repository contains an end-to-end e-commerce platform supporting product catalog management, bulk CSV imports with row-level validation, trigram-indexed search, and an idempotent checkout flow.
+The repository contains product CRUD, catalog search, a bundled CSV startup seed, and a simulated payment flow. Product writes require HTTP Basic admin credentials. It is a challenge implementation, not a production deployment: user accounts, real payment integration, user-uploaded CSV files, and operational monitoring are not included.
 
 ### 🌐 Accessing the Services
 
@@ -35,6 +35,10 @@ Start the application containers:
 Run the following command from the root directory containing the docker-compose.yml file:
 docker compose up --build
 
+Product create, update, and delete endpoints use HTTP Basic authentication. Local defaults are `admin` / `change-me`; set `APP_SECURITY_ADMIN_USERNAME` and `APP_SECURITY_ADMIN_PASSWORD` before starting Compose to override them. Change these values outside a local demo.
+
+The React API client sends those credentials only for product create, update, and delete requests. In Compose, the frontend receives the same values as build arguments. For local `npm start`, set `REACT_APP_ADMIN_USERNAME` and `REACT_APP_ADMIN_PASSWORD` to match the API account. These build-time credentials are visible to anyone who can access the frontend bundle, so this shared-account approach is intended for the local challenge demo only.
+
 Stop the containers:
 To stop the running services, press Ctrl + C in your terminal, or run:
 docker compose down
@@ -42,7 +46,8 @@ docker compose down
 
 ### Sample Data Details
 * **Example CSV File:** `Code Challenge E-Commerce` renamed to `products.csv`
-* **CSV Download Date:** October 22, 2026
+* **CSV Download Date:** October 22, 2026 (confirm this date against the original download record before relying on it).
+* The CSV is loaded from the classpath once when the product table is empty. Invalid rows are skipped and reported to application stderr; unknown categories fall back to `MISC`. There is no CSV upload endpoint or import summary in the UI.
 
 ---
 
@@ -68,25 +73,48 @@ docker compose down
 ### 1. Relational Data Store & Schema Migrations
 * **Choice:** PostgreSQL + Flyway
 * **Rationale:** Relational data consistency (`ACID`) is non-negotiable for e-commerce inventory and transactional orders. Flyway executes version-controlled SQL migration scripts (`db/migration/V1__*.sql`) on application startup, guaranteeing exact database schema reproducibility and seamless initialization across fresh Docker environments.
+* **Schema note:** Order items reference their purchase order with a foreign key. Product IDs and SKUs on order items are snapshots without a product foreign key so past orders can remain readable independently of catalog lifecycle.
 
 ### 2. Concurrency Control & Stock Management
 * **Choice:** PostgreSQL Atomic Conditional SQL Updates inside ACID Transactions
-* **Rationale:** Stock deduction is executed directly at the persistence layer using conditional SQL statements (`UPDATE products SET stock = stock - :qty WHERE id = :id AND stock >= :qty`) within a single `@Transactional` boundary. This relies on PostgreSQL's row-level locking to handle concurrent updates safely, ensuring that stock deductions and order creations either commit or roll back together atomically.
+* **Rationale:** Stock deduction uses a conditional database update (`stock >= quantity`) inside the order transaction. PostgreSQL row locks serialize competing updates, and failure to reserve stock aborts order creation. The atomic update is intentionally used instead of an in-memory check, which cannot protect concurrent requests.
 * **Alternative Considered:** Redis Pre-Reservations. Intentionally omitted. While Redis provides fast in-memory atomic operations, it introduces cross-system dual-write risks: if an application crashes or database write fails after a Redis deduction, the two systems fall out of sync, requiring complex reservation expirations, compensations, and background reconciliation loops.
 
 ### 3. Asynchronous Non-Blocking Payment Processing
 - **Choice:** RabbitMQ Message Queue + Transactional Outbox Pattern
-- **Rationale:** Decouples order request ingestion from payment gateway execution. To prevent dual-write inconsistencies, the API creates the order (`PENDING_PAYMENT`), deducts stock, and records an outbox event inside a single PostgreSQL `@Transactional` boundary. A background worker picks up the outbox event, dispatches it to RabbitMQ, simulates payment, and updates the order status to `PAID` or `FAILED`. On payment failure, reserved stock is released exactly once.
+- **Rationale:** The API saves the order, reserves stock, and stores an outbox event in one PostgreSQL transaction. A scheduled relay publishes pending events; failed sends remain eligible for retry. Payment is simulated by the consumer. Delivery is at least once, so consumers must remain idempotent. Current order status checks prevent most duplicate processing; monitor and test crash/retry boundaries before production use.
 - **Alternative Considered:** Synchronous HTTP payment execution within the REST handler. Rejected because third-party payment gateway latency directly degrades API throughput and client response times.
 
 ### 4. Search & Indexing Strategy
-* **Choice:** PostgreSQL B-Tree & Trigram (`pg_trgm`) GIN Indexes
-* **Rationale:** Native PostgreSQL trigram GIN indexes enable fast partial text matching, fuzzy searches, and paginated queries across `name`, `sku`, and `category` fields with microsecond latency without adding extra container dependencies.
+* **Choice:** PostgreSQL `pg_trgm` GIN indexes with `unaccent`
+* **Rationale:** Search uses case- and accent-insensitive substring matching across name, SKU, description, and category, then ranks matches by trigram similarity. GIN expression indexes are installed by Flyway. Search terms are escaped so `%` and `_` are treated literally. This does not implement multi-word relevance tuning or a dedicated search service.
 * **Alternative Considered:** Elasticsearch. Elasticsearch offers robust search, but adding a dedicated search cluster for a single-service architecture introduces unnecessary operational complexity and resource overhead.
 
 ### 5. Efficient Bulk CSV Import
-* **Choice:** Apache Commons CSV + Spring Data JPA Batching
-* **Rationale:** Processes incoming CSV files using a streaming reader combined with JDBC batch execution (`batchUpdate`) rather than single-row `save()` loops in JPA, ensuring low memory footprint and high processing speed during large uploads.     
+* **Choice:** OpenCSV streaming reader for the bundled seed
+* **Rationale:** A simple startup seed is sufficient for the supplied example dataset. Rows are validated while reading and saved individually; this is not a high-volume upload pipeline. A future upload feature should return row-level errors and use bounded JDBC batching.
+
+---
+
+## 🧪 Testing Strategy
+
+The platform implements a comprehensive, multi-layered testing strategy to guarantee code quality, transactional safety across distributed boundaries, and a seamless user experience from end to end.
+
+### 1. Frontend Component Testing
+- **Tools:** Jest & React Testing Library
+- **Scope:** Validates individual React components, local state management, form inputs, and user interactions in isolation. It ensures that UI components render correctly and handle user events robustly before integration.
+
+### 2. Backend Unit Testing
+- **Tools:** JUnit 5 & Mockito
+- **Scope:** Focuses on business logic services, domain components, and event listeners (such as the asynchronous `PurchaseEventListener`). Collaborators and repositories are mocked to test edge cases, conditional flows (like payment success/failure paths), and error handling deterministically and rapidly.
+
+### 3. Integration & Concurrency Testing
+- **Tools:** Spring Boot Test, Testcontainers dependencies, and RabbitMQ integration tests
+- **Scope:** Existing integration coverage exercises purchase messaging. PostgreSQL concurrency and migration integration coverage still needs to be added; unit tests alone do not prove atomic stock behavior under concurrent requests.
+
+### 4. End-to-End (E2E) Acceptance Testing
+- **Tools:** Selenium
+- **Scope:** Selenium tests cover navigation, catalog, product administration, purchase history, and a checkout journey using local/mock services. Authentication-specific browser coverage is not currently present.
 
 ## 🛠️ Tech Stack
 
