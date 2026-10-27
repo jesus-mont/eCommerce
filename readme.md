@@ -35,7 +35,7 @@ Start the application containers:
 Run the following command from the root directory containing the docker-compose.yml file:
 docker compose up --build
 
-Product create, update, and delete endpoints use HTTP Basic authentication. Local defaults are `admin` / `change-me`; set `APP_SECURITY_ADMIN_USERNAME` and `APP_SECURITY_ADMIN_PASSWORD` before starting Compose to override them. Change these values outside a local demo.
+Product create, update, and delete endpoints use HTTP Basic authentication. Local defaults are `admin` / `ecommerceApp`; set `APP_SECURITY_ADMIN_USERNAME` and `APP_SECURITY_ADMIN_PASSWORD` before starting Compose to override them. Change these values outside a local demo.
 
 The React API client sends those credentials only for product create, update, and delete requests. In Compose, the frontend receives the same values as build arguments. For local `npm start`, set `REACT_APP_ADMIN_USERNAME` and `REACT_APP_ADMIN_PASSWORD` to match the API account. These build-time credentials are visible to anyone who can access the frontend bundle, so this shared-account approach is intended for the local challenge demo only.
 
@@ -53,7 +53,7 @@ docker compose down
 
 ## 🏗️ Architectural Decisions & Design Approach
 
-```text
+
                ┌───────────────────────────────────────────┐
                │          React + TypeScript UI            │
                └─────────────────────┬─────────────────────┘
