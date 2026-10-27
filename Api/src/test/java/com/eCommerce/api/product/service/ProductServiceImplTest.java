@@ -45,7 +45,7 @@ class ProductServiceImplTest {
                 new BigDecimal("1200.00"), 10, BigDecimal.valueOf(2.5)
         );
 
-        when(productRepository.existsBySku("sku-001")).thenReturn(false);
+        when(productRepository.existsBySku("SKU-001")).thenReturn(false);
         when(productRepository.save(any(Product.class))).thenAnswer(invocation -> {
             Product p = invocation.getArgument(0);
             p.setId(1L);
@@ -59,7 +59,7 @@ class ProductServiceImplTest {
         assertNotNull(response);
         assertEquals("SKU-001", response.sku());
         assertEquals("Laptop", response.name());
-        verify(productRepository, times(1)).existsBySku("sku-001");
+        verify(productRepository, times(1)).existsBySku("SKU-001");
         verify(productRepository, times(1)).save(any(Product.class));
     }
 
@@ -72,7 +72,7 @@ class ProductServiceImplTest {
                 new BigDecimal("1200.00"), 10, BigDecimal.valueOf(2.5)
         );
 
-        when(productRepository.existsBySku("sku-001")).thenReturn(true);
+        when(productRepository.existsBySku("SKU-001")).thenReturn(true);
 
         // Act & Assert
         DuplicateResourceException exception = assertThrows(
@@ -80,8 +80,16 @@ class ProductServiceImplTest {
                 () -> productService.createProduct(request)
         );
 
-        assertEquals("Product with SKU sku-001 already exists", exception.getMessage());
+        assertEquals("Product with SKU SKU-001 already exists", exception.getMessage());
         verify(productRepository, never()).save(any(Product.class));
+    }
+
+    @Test
+    void createProduct_RejectsWhitespaceOnlyNameBeforePersistence() {
+        CreateProductRequest request = new CreateProductRequest("sku", "   ", null,
+                ProductCategory.MISC, new BigDecimal("1.00"), 0, new BigDecimal("1.000"));
+        assertThrows(IllegalArgumentException.class, () -> productService.createProduct(request));
+        verify(productRepository, never()).save(any());
     }
 
     @Test
@@ -247,7 +255,8 @@ class ProductServiceImplTest {
     @Test
     @DisplayName("Should return a paged list of products matching the search keyword")
     void searchProducts_Success() {
-        Pageable pageable = PageRequest.of(0, 10);
+        Pageable pageable = PageRequest.of(0, 10, org.springframework.data.domain.Sort.by("createdAt"));
+        Pageable relevancePage = PageRequest.of(0, 10);
         String keyword = "laptop";
         Product product = Product.builder()
                 .id(1L)
@@ -259,14 +268,14 @@ class ProductServiceImplTest {
                 .isActive(true)
                 .build();
 
-        Page<Product> productPage = new PageImpl<>(List.of(product), pageable, 1);
-        when(productRepository.searchProducts(eq(keyword), eq(pageable))).thenReturn(productPage);
+        Page<Product> productPage = new PageImpl<>(List.of(product), relevancePage, 1);
+        when(productRepository.searchProducts(eq(keyword), eq(relevancePage))).thenReturn(productPage);
 
         Page<ProductResponse> responsePage = productService.searchProducts(keyword, pageable);
 
         assertNotNull(responsePage);
         assertEquals(1, responsePage.getTotalElements());
         assertEquals("Gaming Laptop", responsePage.getContent().get(0).name());
-        verify(productRepository, times(1)).searchProducts(eq(keyword), eq(pageable));
+        verify(productRepository, times(1)).searchProducts(eq(keyword), eq(relevancePage));
     }
 }

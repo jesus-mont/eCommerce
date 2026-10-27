@@ -25,6 +25,7 @@ public class PurchaseEventListener {
     }
 
     @RabbitListener(queues = RabbitMQConfig.PURCHASE_QUEUE)
+    @Transactional
     public void handlePurchaseCreated(PurchaseCreatedEvent event) {
         Long orderId = event.orderId();
         Optional<PurchaseOrder> optionalOrder = purchaseOrderRepository.findById(event.orderId());

@@ -7,9 +7,9 @@ import com.eCommerce.api.purchase.domain.OrderStatus;
 import com.eCommerce.api.purchase.domain.PurchaseOrder;
 import com.eCommerce.api.purchase.dto.CreatePurchaseRequest;
 import com.eCommerce.api.purchase.dto.PurchaseResponse;
-import com.eCommerce.api.purchase.event.OrderCommittedEvent;
-import com.eCommerce.api.purchase.event.PurchaseCreatedEvent;
-import com.eCommerce.api.purchase.messaging.PurchaseProducer;
+import com.eCommerce.api.purchase.domain.OutboxEvent;
+import com.eCommerce.api.purchase.repository.OutboxEventRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.eCommerce.api.purchase.repository.PurchaseOrderRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -18,13 +18,10 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.orm.ObjectOptimisticLockingFailureException;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -46,10 +43,10 @@ class PurchaseServiceImplTest {
     private ProductRepository productRepository;
 
     @Mock
-    private PurchaseProducer purchaseProducer;
+    private OutboxEventRepository outboxEventRepository;
 
     @Mock
-    private ApplicationEventPublisher eventPublisher;
+    private ObjectMapper objectMapper;
 
 
     @InjectMocks
@@ -57,7 +54,7 @@ class PurchaseServiceImplTest {
 
     @Test
     @DisplayName("Should create purchase successfully, save order, and send event")
-    void createPurchase_Success() {
+    void createPurchase_Success() throws Exception {
         // Arrange
         CreatePurchaseRequest.ItemRequest itemReq = new CreatePurchaseRequest.ItemRequest(1L, 2);
         CreatePurchaseRequest request = new CreatePurchaseRequest("cliente@example.com", List.of(itemReq));
@@ -72,6 +69,8 @@ class PurchaseServiceImplTest {
                 .build();
 
         when(productRepository.findByIdAndIsActiveTrue(1L)).thenReturn(Optional.of(mockProduct));
+        when(productRepository.reserveStock(1L, 2)).thenReturn(1);
+        when(objectMapper.writeValueAsString(any())).thenReturn("{}");
 
         when(purchaseOrderRepository.save(any(PurchaseOrder.class))).thenAnswer(invocation -> {
             PurchaseOrder orderToSave = invocation.getArgument(0);
@@ -93,16 +92,10 @@ class PurchaseServiceImplTest {
         assertEquals(1, response.items().size());
         assertEquals("LAPTOP-SKU", response.items().get(0).sku());
 
-        ArgumentCaptor<OrderCommittedEvent> captor = ArgumentCaptor.forClass(OrderCommittedEvent.class);
-
-        verify(eventPublisher, times(1)).publishEvent(captor.capture());
-
-        OrderCommittedEvent capturedWrapper = captor.getValue();
-        PurchaseCreatedEvent capturedEvent = capturedWrapper.purchaseEvent();
-
-        assertEquals(100L, capturedEvent.orderId());
-        assertEquals("cliente@example.com", capturedEvent.customerEmail());
-        assertEquals(BigDecimal.valueOf(1000.00), capturedEvent.totalAmount());
+        ArgumentCaptor<OutboxEvent> captor = ArgumentCaptor.forClass(OutboxEvent.class);
+        verify(outboxEventRepository).save(captor.capture());
+        assertEquals("PurchaseCreatedEvent", captor.getValue().getEventType());
+        assertEquals("{}", captor.getValue().getPayload());
     }
 
     @Test
@@ -122,7 +115,7 @@ class PurchaseServiceImplTest {
 
         assertEquals("Product not found with id: 99", exception.getMessage());
         verify(purchaseOrderRepository, never()).save(any());
-        verify(purchaseProducer, never()).sendPurchaseEvent(any());
+        verify(outboxEventRepository, never()).save(any());
     }
 
     @Test
@@ -144,14 +137,15 @@ class PurchaseServiceImplTest {
         when(productRepository.findByIdAndIsActiveTrue(1L)).thenReturn(Optional.of(mockProduct));
 
         // Act & Assert
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
+        when(productRepository.reserveStock(1L, 15)).thenReturn(0);
+        com.eCommerce.api.common.exception.InsufficientStockException exception = assertThrows(
+                com.eCommerce.api.common.exception.InsufficientStockException.class,
                 () -> purchaseService.createPurchase(request)
         );
 
         assertEquals("Insufficient stock for product: Smartphone", exception.getMessage());
         verify(purchaseOrderRepository, never()).save(any());
-        verify(purchaseProducer, never()).sendPurchaseEvent(any());
+        verify(outboxEventRepository, never()).save(any());
     }
 
     @Test
@@ -170,7 +164,7 @@ class PurchaseServiceImplTest {
 
         verify(productRepository, never()).findByIdAndIsActiveTrue(any());
         verify(purchaseOrderRepository, never()).save(any());
-        verify(purchaseProducer, never()).sendPurchaseEvent(any());
+        verify(outboxEventRepository, never()).save(any());
     }
 
     @Test
@@ -190,15 +184,10 @@ class PurchaseServiceImplTest {
         mockProduct.setVersion(1L);
 
         when(productRepository.findByIdAndIsActiveTrue(productId)).thenReturn(Optional.of(mockProduct));
+        when(productRepository.reserveStock(productId, quantity)).thenReturn(0);
 
-        when(productRepository.save(any(Product.class)))
-                .thenThrow(new ObjectOptimisticLockingFailureException(Product.class, productId));
-
-        IllegalStateException exception = assertThrows(IllegalStateException.class, () -> {
-            purchaseService.createPurchase(request);
-        });
-
-        assertTrue(exception.getMessage().contains("was updated by other transaction"));
+        assertThrows(com.eCommerce.api.common.exception.InsufficientStockException.class,
+                () -> purchaseService.createPurchase(request));
     }
 
     @Test

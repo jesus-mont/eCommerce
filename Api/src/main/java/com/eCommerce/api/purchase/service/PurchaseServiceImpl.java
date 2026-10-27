@@ -1,6 +1,7 @@
 package com.eCommerce.api.purchase.service;
 
 import com.eCommerce.api.common.exception.ResourceNotFoundException;
+import com.eCommerce.api.common.exception.InsufficientStockException;
 import com.eCommerce.api.product.domain.Product;
 import com.eCommerce.api.product.repository.ProductRepository;
 import com.eCommerce.api.purchase.domain.OrderItem;
@@ -9,13 +10,15 @@ import com.eCommerce.api.purchase.domain.PurchaseOrder;
 import com.eCommerce.api.purchase.dto.CreatePurchaseRequest;
 import com.eCommerce.api.purchase.dto.PurchaseResponse;
 import com.eCommerce.api.purchase.event.PurchaseCreatedEvent;
-import com.eCommerce.api.purchase.event.OrderCommittedEvent;
 import com.eCommerce.api.purchase.repository.PurchaseOrderRepository;
+import com.eCommerce.api.purchase.domain.OutboxEvent;
+import com.eCommerce.api.purchase.repository.OutboxEventRepository;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.context.ApplicationEventPublisher;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -26,16 +29,19 @@ public class PurchaseServiceImpl implements PurchaseService {
 
     private final PurchaseOrderRepository purchaseOrderRepository;
     private final ProductRepository productRepository;
-    private final ApplicationEventPublisher eventPublisher;
+    private final OutboxEventRepository outboxEventRepository;
+    private final ObjectMapper objectMapper;
 
     public PurchaseServiceImpl(
             PurchaseOrderRepository purchaseOrderRepository,
             ProductRepository productRepository,
-            ApplicationEventPublisher eventPublisher
+            OutboxEventRepository outboxEventRepository,
+            ObjectMapper objectMapper
             ) {
         this.purchaseOrderRepository = purchaseOrderRepository;
         this.productRepository = productRepository;
-        this.eventPublisher = eventPublisher;
+        this.outboxEventRepository = outboxEventRepository;
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -54,14 +60,8 @@ public class PurchaseServiceImpl implements PurchaseService {
             Product product = productRepository.findByIdAndIsActiveTrue(itemReq.productId())
                     .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + itemReq.productId()));
 
-            if (product.getStock() < itemReq.quantity()) {
-                throw new IllegalArgumentException("Insufficient stock for product: " + product.getName());
-            }
-            product.setStock(product.getStock() - itemReq.quantity());
-            try {
-                productRepository.save(product);
-            } catch (org.springframework.orm.ObjectOptimisticLockingFailureException e) {
-                throw new IllegalStateException("product: '" + product.getName() + "'was updated by other transaction. Please try again.");
+            if (productRepository.reserveStock(product.getId(), itemReq.quantity()) != 1) {
+                throw new InsufficientStockException("Insufficient stock for product: " + product.getName());
             }
 
             BigDecimal itemTotal = product.getPrice().multiply(BigDecimal.valueOf(itemReq.quantity()));
@@ -100,7 +100,14 @@ public class PurchaseServiceImpl implements PurchaseService {
                 savedOrder.getCreatedAt()
         );
 
-        eventPublisher.publishEvent(new OrderCommittedEvent(event));
+        try {
+            outboxEventRepository.save(OutboxEvent.builder()
+                    .eventType("PurchaseCreatedEvent")
+                    .payload(objectMapper.writeValueAsString(event))
+                    .build());
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("Could not persist purchase event", e);
+        }
 
         return PurchaseResponse.fromEntity(savedOrder);
     }
