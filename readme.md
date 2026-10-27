@@ -111,6 +111,20 @@ Search uses PostgreSQL `unaccent` and `pg_trgm`, with GIN expression indexes on 
 
 The API writes the order, stock reservation, and an outbox event in one database transaction. A scheduled publisher sends unpublished events to RabbitMQ and retries events it cannot publish. The listener processes only orders still in `PENDING`, marks payment `COMPLETED` or `FAILED`, and restores stock on failure. Payment is a simulation, not a real provider integration. The outbox addresses the database/message-broker dual-write gap, though delivery and crash-retry behavior still warrant real-broker integration testing before production use.
 
+### Enhancements: event idempotency and handling
+
+The current listener uses the order status as a duplicate guard: it ignores a message if the order is no longer `PENDING`. This protects sequential redelivery after the first transaction commits, but it is not a complete idempotency guarantee. Two consumers could read `PENDING` concurrently, and the outbox publisher does not use broker publisher confirms, so a publish followed by a failed database update can result in redelivery.
+
+Recommended next steps:
+
+1. Give each event a stable `eventId` and preserve it across every publish retry.
+2. Add a consumer inbox table with a unique constraint on `eventId`, recording receipt in the same database transaction as the order status change and stock restoration. A duplicate event then becomes a no-op.
+3. Make payment handling conditional and atomic, such as locking the order row or updating its status only when it is still `PENDING`, so simultaneous deliveries cannot both apply the outcome.
+4. Enable RabbitMQ publisher confirms and mark an outbox row published only after the broker confirms receipt. Keep the inbox deduplication because confirms do not eliminate every possible duplicate.
+5. Add integration tests for duplicate delivery, concurrent delivery, and a publisher crash after broker acceptance but before the outbox row is marked published.
+
+These are proposed enhancements; the event ID, inbox deduplication, publisher confirms, and retry-boundary integration tests are not implemented yet.
+
 ### CSV policy
 
 OpenCSV reads the bundled sample at startup and saves valid rows individually. Duplicate SKUs are skipped; invalid rows are logged. This is adequate for the supplied seed file, not a high-volume import pipeline. A user-upload flow with a row-by-row import report is a known missing feature.
