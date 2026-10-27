@@ -30,7 +30,7 @@ public class OutboxPublisher {
                 event.setPublishedAt(OffsetDateTime.now());
             } catch (Exception e) {
                 logger.warn("Unable to publish outbox event {}. It will be retried.", event.getId(), e);
-                return;
+                continue;
             }
         }
     }

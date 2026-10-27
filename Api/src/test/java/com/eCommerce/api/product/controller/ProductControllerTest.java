@@ -7,6 +7,7 @@ import com.eCommerce.api.product.dto.CreateProductRequest;
 import com.eCommerce.api.product.dto.ProductResponse;
 import com.eCommerce.api.product.dto.UpdateProductRequest;
 import com.eCommerce.api.product.service.ProductService;
+import com.eCommerce.api.config.SecurityConfig;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -17,6 +18,8 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.context.annotation.Import;
+import org.springframework.test.context.TestPropertySource;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -27,9 +30,15 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doThrow;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(ProductController.class)
+@Import(SecurityConfig.class)
+@TestPropertySource(properties = {
+        "app.security.admin-username=admin",
+        "app.security.admin-password=controller-test-password"
+})
 class ProductControllerTest {
 
     @Autowired
@@ -42,7 +51,16 @@ class ProductControllerTest {
     private ProductService productService;
 
     @Test
-    @DisplayName("POST /api/products - Debe retornar 201 Created cuando el producto es válido")
+    @DisplayName("Product writes require admin authentication")
+    void createProduct_RequiresAdminAuthentication() throws Exception {
+        mockMvc.perform(post("/api/products")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("POST /api/products - needs to return 201 Created when product is valid")
     void createProduct_Success() throws Exception {
         // Arrange
         CreateProductRequest request = new CreateProductRequest(
@@ -59,6 +77,7 @@ class ProductControllerTest {
 
         // Act & Assert
         mockMvc.perform(post("/api/products")
+                        .with(httpBasic("admin", "controller-test-password"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
@@ -68,7 +87,7 @@ class ProductControllerTest {
     }
 
     @Test
-    @DisplayName("POST /api/products - Debe retornar 409 Conflict cuando el SKU ya existe")
+    @DisplayName("POST /api/products - return 409 Conflict when sku already exist")
     void createProduct_Conflict() throws Exception {
         // Arrange
         CreateProductRequest request = new CreateProductRequest(
@@ -81,6 +100,7 @@ class ProductControllerTest {
 
         // Act & Assert
         mockMvc.perform(post("/api/products")
+                        .with(httpBasic("admin", "controller-test-password"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isConflict())
@@ -89,7 +109,7 @@ class ProductControllerTest {
     }
 
     @Test
-    @DisplayName("GET /api/products/{id} - Debe retornar 200 OK cuando el producto existe")
+    @DisplayName("GET /api/products/{id} - return 200 OK when product exist")
     void getProductById_Success() throws Exception {
         // Arrange
         Long productId = 1L;
@@ -109,7 +129,7 @@ class ProductControllerTest {
     }
 
     @Test
-    @DisplayName("GET /api/products/{id} - Debe retornar 404 Not Found cuando el producto no existe")
+    @DisplayName("GET /api/products/{id} - return 404 when product doesn't exist")
     void getProductById_NotFound() throws Exception {
         // Arrange
         Long productId = 99L;
@@ -125,7 +145,7 @@ class ProductControllerTest {
     }
 
     @Test
-    @DisplayName("GET /api/products - Debe retornar 200 OK con una página de productos")
+    @DisplayName("GET /api/products - return 200 OK whit a product page")
     void getAllProducts_Success() throws Exception {
         // Arrange
         ProductResponse response = new ProductResponse(
@@ -145,24 +165,25 @@ class ProductControllerTest {
     }
 
     @Test
-    @DisplayName("PUT /api/products/{id} - Debe retornar 200 OK al actualizar exitosamente")
+    @DisplayName("PUT /api/products/{id} - return 200 OK when update success")
     void updateProduct_Success() throws Exception {
         // Arrange
         Long productId = 1L;
         UpdateProductRequest request = new UpdateProductRequest(
                 "Updated Laptop", "New Description", ProductCategory.ELECTRONICS,
-                new BigDecimal("1300.00"), 8, new BigDecimal(2.3)
+                new BigDecimal("1300.00"), 8, new BigDecimal("2.300")
         );
 
         ProductResponse response = new ProductResponse(
                 productId, "SKU-001", "Updated Laptop", "New Description", ProductCategory.ELECTRONICS,
-                new BigDecimal("1300.00"), 8, new BigDecimal(2.3), true, OffsetDateTime.now(), OffsetDateTime.now()
+                new BigDecimal("1300.00"), 8, new BigDecimal("2.300"), true, OffsetDateTime.now(), OffsetDateTime.now()
         );
 
         given(productService.updateProduct(eq(productId), any(UpdateProductRequest.class))).willReturn(response);
 
         // Act & Assert
         mockMvc.perform(put("/api/products/{id}", productId)
+                        .with(httpBasic("admin", "controller-test-password"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -171,13 +192,14 @@ class ProductControllerTest {
     }
 
     @Test
-    @DisplayName("DELETE /api/products/{id} - Debe retornar 204 No Content al desactivar exitosamente")
+    @DisplayName("DELETE /api/products/{id} - return 204 No Content wwhen deactivate product")
     void deactivateProduct_Success() throws Exception {
         // Arrange
         Long productId = 1L;
 
         // Act & Assert
-        mockMvc.perform(delete("/api/products/{id}", productId))
+        mockMvc.perform(delete("/api/products/{id}", productId)
+                        .with(httpBasic("admin", "controller-test-password")))
                 .andExpect(status().isNoContent());
     }
 

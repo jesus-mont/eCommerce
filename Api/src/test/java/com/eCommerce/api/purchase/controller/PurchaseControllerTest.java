@@ -4,6 +4,7 @@ import com.eCommerce.api.purchase.domain.OrderStatus;
 import com.eCommerce.api.purchase.dto.CreatePurchaseRequest;
 import com.eCommerce.api.purchase.dto.PurchaseResponse;
 import com.eCommerce.api.purchase.service.PurchaseService;
+import com.eCommerce.api.config.SecurityConfig;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -17,6 +18,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.context.annotation.Import;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -31,6 +33,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(PurchaseController.class)
+@Import(SecurityConfig.class)
 class PurchaseControllerTest {
 
     @Autowired

@@ -4,25 +4,34 @@ import com.eCommerce.api.product.domain.Product;
 import com.eCommerce.api.product.domain.ProductCategory;
 import com.eCommerce.api.product.repository.ProductRepository;
 import com.opencsv.CSVReader;
-import org.springframework.core.io.ClassPathResource;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.io.InputStreamReader;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 
 @Service
-@RequiredArgsConstructor
 public class CsvProductImporter {
 
     private final ProductRepository productRepository;
+    private final Resource csvResource;
+
+    @Autowired
+    public CsvProductImporter(ProductRepository productRepository,
+                              @Value("classpath:products.csv") Resource csvResource) {
+        this.productRepository = productRepository;
+        this.csvResource = csvResource;
+    }
 
     public void importProductsIfNeeded() {
         if (productRepository.count() > 0) {
             return;
         }
 
-        try (CSVReader reader = new CSVReader(new InputStreamReader(new ClassPathResource("products.csv").getInputStream()))) {
+        try (CSVReader reader = new CSVReader(new InputStreamReader(csvResource.getInputStream(), StandardCharsets.UTF_8))) {
 
             String[] nextLine;
             int lineNumber = 0;
