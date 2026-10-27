@@ -17,7 +17,7 @@ describe('Pagination Component', () => {
       <Pagination currentPage={1} totalPages={5} onPageChange={() => {}} />
     );
     
-    expect(screen.getByText('Page 2 de 5')).toBeInTheDocument();
+    expect(screen.getByText('Page 2 of 5')).toBeInTheDocument();
   });
 
   test('disables "Previos" button when on the first page (currentPage === 0)', () => {

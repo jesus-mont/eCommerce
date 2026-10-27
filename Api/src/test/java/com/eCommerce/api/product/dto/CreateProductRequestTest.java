@@ -42,7 +42,7 @@ class CreateProductRequestTest {
         Set<ConstraintViolation<CreateProductRequest>> violations = validator.validate(request);
 
         // Assert
-        assertTrue(violations.isEmpty(), "No debería haber errores de validación");
+        assertTrue(violations.isEmpty(), "Expected no validation errors");
     }
 
     @Test

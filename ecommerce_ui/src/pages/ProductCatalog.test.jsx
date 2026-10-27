@@ -11,7 +11,7 @@ jest.mock('../components/Pagination', () => {
     if (totalPages <= 1) return null;
     return (
       <div data-testid="pagination-controls">
-        <span>Page {currentPage + 1} de {totalPages}</span>
+        <span>Page {currentPage + 1} of {totalPages}</span>
         <button onClick={() => onPageChange(currentPage + 1)}>next</button>
         <button onClick={() => onPageChange(currentPage - 1)}>Previos</button>
         <button onClick={() => onPageChange(-1)}>Invalid Lower Bound</button>
@@ -489,7 +489,7 @@ describe('ProductCatalog Component', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Wireless Mouse')).toBeInTheDocument();
-      expect(screen.getByText('Page 1 de 2')).toBeInTheDocument();
+      expect(screen.getByText('Page 1 of 2')).toBeInTheDocument();
     });
 
     const invalidLowerBtn = screen.getByRole('button', { name: /Invalid Lower Bound/i });
@@ -514,7 +514,7 @@ describe('ProductCatalog Component', () => {
     await waitFor(() => {
       expect(api.get).toHaveBeenCalledWith('/products?page=1&size=20');
       expect(screen.getByText('Mechanical Keyboard')).toBeInTheDocument();
-      expect(screen.getByText('Page 2 de 2')).toBeInTheDocument();
+      expect(screen.getByText('Page 2 of 2')).toBeInTheDocument();
     });
 
     api.get.mockResolvedValueOnce({

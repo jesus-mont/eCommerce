@@ -22,8 +22,7 @@ async function createDriver(overrides = {}) {
 
   const driver = await new Builder()
     .forBrowser(config.browser)
-    .setChromeOptions(options) *
-
+    .setChromeOptions(options)
     .build();
 
   await driver.manage().setTimeouts({

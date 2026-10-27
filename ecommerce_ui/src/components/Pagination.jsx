@@ -14,7 +14,7 @@ export default function Pagination({ currentPage, totalPages, onPageChange }) {
             </button>
 
             <span style={{ alignSelf: 'center' }}>
-                Page {currentPage + 1} de {totalPages}
+                Page {currentPage + 1} of {totalPages}
             </span>
 
             <button 
